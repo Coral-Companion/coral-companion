@@ -1,12 +1,35 @@
 {
     "python.testing.pytestArgs": [
-        "backend"
+        "backend/core",
+        "backend/segmentation-worker"
     ],
     "python.analysis.extraPaths": [
-        "./backend"
+        "backend/core",
+        "backend/segmentation-worker"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "python-envs.defaultEnvManager": "ms-python.python:conda",
-    "python-envs.defaultPackageManager": "ms-python.python:conda"
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit"
+        }
+    },
+
+    "[vue]": {
+        "editor.defaultFormatter": "Vue.volar"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "vscode.typescript-language-features"
+    },
+
+    "files.watcherExclude": {
+        "**/node_modules/**": true,
+        "**/dist/**": true,
+        "**/.pytest_cache/**": true,
+        "**/__pycache__/**": true
+    }
 }
