@@ -1,4 +1,7 @@
-functions-framework==3.8.1
+# Web Framework & Worker Server
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
 
 numpy==1.26.4
 torch>=2.5.0

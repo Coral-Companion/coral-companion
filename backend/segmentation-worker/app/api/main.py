@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, HTTPException, Request
+from fastapi import FastAPI, UploadFile, HTTPException, Request, File
 from fastapi.responses import JSONResponse
 from fastapi.encoders import jsonable_encoder
 from dataclasses import asdict
@@ -82,7 +82,7 @@ async def health_check(request: Request):
 
 
 @app.post("/api/segment")
-async def segment_image(request: Request, file: UploadFile):
+async def segment_image(request: Request, file: UploadFile = File(...)):
     """Receives an image, runs inference, and returns masks."""
     mask_generator = get_mask_generator(request)
     if mask_generator is None:
@@ -124,14 +124,16 @@ async def segment_image(request: Request, file: UploadFile):
         )
 
     except Exception as e:
+        logger.exception("An error occurred", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 def get_mask_generator(request):
     return getattr(request.app.state, "mask_generator", None)
 
 async def prepare_image(file):
-    image_bytes = np.frombuffer(await file.read(), np.uint8)
-    image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
+    file_bytes = await file.read()
+    file_ndarray = np.frombuffer(file_bytes, np.uint8)
+    image = cv2.imdecode(file_ndarray, cv2.IMREAD_COLOR)
     if image is None:
         logger.warning("Decoding image resulted in 'None'")
         raise HTTPException(status_code=400, detail="Invalid image file format.")
@@ -140,6 +142,7 @@ async def prepare_image(file):
         raise HTTPException(400, "Image dimensions off. Expected BGR image")
 
     rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    cv2.imwrite("test.jpg", image)
     return image,rgb
 
 def build_segment(index, mask_record, bbox, polygon_points):

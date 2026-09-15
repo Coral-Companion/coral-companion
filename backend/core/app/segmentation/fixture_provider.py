@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 from pathlib import Path
-from typing import List
+from typing import List, BinaryIO
 
 from app.domain.models import BoundingBox, Point, Segment
 import numpy as np
@@ -48,20 +47,13 @@ class FixtureProvider(SegmentationProvider):
 
         return json_path
 
-    def segment(
-        self,
-        image: np.ndarray | None,
-        image_filename: str,
-    ) -> SegmentationResult:
-
+    async def segment(self, image: bytes, image_filename: str) -> SegmentationResult:
         json_file = self._get_fixture_json_path(image_filename)
 
         with json_file.open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
 
-        
         segments_payload = payload.get("segments", [])
-
         segments: List[Segment] = []
 
         for segment_payload in segments_payload:

@@ -38,7 +38,7 @@ class CoralService:
         self.observation_repository = ObservationRepository()
         self.logger = logging.getLogger(__name__)
 
-    def segment_image(self, image: np.ndarray, filename: str) -> SegmentationResult :
+    async def segment_image(self, image: bytes, filename: str) -> SegmentationResult :
         """
         Runs CoralSCOP (or fixture provider) to find coral segment(s) in the given picture.
 
@@ -46,7 +46,7 @@ class CoralService:
         """
         
         with performance_stage("Full Segmentation"):
-            result = self.segmenter.segment(image, filename)
+            result = await self.segmenter.segment(image, filename)
 
         return result
 

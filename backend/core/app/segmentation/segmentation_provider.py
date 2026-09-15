@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-
+from typing import BinaryIO
 import numpy as np
 
 from app.segmentation.models import SegmentationResult
@@ -9,5 +9,5 @@ from app.segmentation.models import SegmentationResult
 
 class SegmentationProvider(ABC):
     @abstractmethod
-    def segment(self, image: np.ndarray | None, image_filename: str) -> SegmentationResult:
+    async def segment(self, image: bytes, image_filename: str) -> SegmentationResult:
         ...
