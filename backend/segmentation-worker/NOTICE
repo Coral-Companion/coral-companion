@@ -1,4 +1,4 @@
-Third-Party Software
+This sub-project uses third party code:
 
 CoralSCOP
 Copyright © the CoralSCOP authors
@@ -11,6 +11,6 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 Modifications:
-- Integrated into Coral Companion backend
+- Integrated into Coral Companion segmentation API backend
 - Adjusted imports for module referencing
-- Added a few print statements for debugging purpose in visualization components
+- Added print statements for debugging purpose in visualization components
