@@ -21,21 +21,3 @@ The long-term objective is to build a persistent history for individual coral co
 * bleaching
 * disease or other visible conditions
 * changes in colony structure
-
-
-# Acknowledgements
-
-## CoralSCOP
-This project uses CoralSCOP, developed by Wong et al., for coral segmentation. It has proven to be extremely helpful for this project. CoralSCOP has been cloned and its code is accessed under backend/third_party.
-
-CoralSCOP:
-https://github.com/zhengziqiang/CoralSCOP
-
-Paper:
-CoralSCOP-LAT: Labeling and Analyzing Tool for Coral Reef Images with Dense Mask
-
-Licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0):
-https://creativecommons.org/licenses/by-nc-sa/4.0/
-
-The Coral Companion project integrates CoralSCOP as a preprocessing step for coral segmentation before colony matching. The only modifications have been made to integrate the model into this application (eg. adjusting imports and adding log statements for debugging purposes).
-
