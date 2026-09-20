@@ -1,0 +1,16 @@
+This sub-project uses third party code:
+
+CoralSCOP
+Copyright © the CoralSCOP authors
+
+Repository:
+https://github.com/zhengziqiang/CoralSCOP
+
+License:
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications:
+- Integrated into Coral Companion segmentation API backend
+- Adjusted imports for module referencing
+- Added print statements for debugging purpose in visualization components
