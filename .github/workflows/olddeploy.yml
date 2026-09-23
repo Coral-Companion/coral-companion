@@ -1,0 +1,126 @@
+name: Production Serverless Build & Deployment Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # ==========================================
+  # JOB 1: TEST, ASSEMBLE & SHIP BACKEND FUNCTION
+  # ==========================================
+  deploy-backend:
+    runs-on: ubuntu-latest
+    environment: MCCR-MVP
+    steps:
+    - name: Checkout Repository Source Tree
+      uses: actions/checkout@v4
+
+    - name: Set up Python Environment Sandbox
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Cache Machine Learning Pip Dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+
+    - name: Install Isolated Linux-CPU Core Wheels
+      run: |
+        cd backend
+        pip install -r requirements.txt
+        pip list | grep -i psycopg
+
+    - name: Verify database driver installation
+      run: |
+        pip show psycopg
+        pip show psycopg-binary
+        python -c "import psycopg; print(psycopg.__version__)"
+
+    # NEW: Fetch model parameters on GitHub's fast runners to skip underwater cloud timeouts
+    - name: Download and Bundle Model Weights Natively
+      run: |
+        cd backend
+        cd app
+        python download_weights.py
+
+#    - name: Run Automated Quality Matrix Verification Checks
+#      run: |
+#        cd backend
+#        pytest test_main.py -v
+
+    # Google Cloud Security Authentication Configuration
+    - name: Authenticate to Google Cloud Engine
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Deploy Serverless Cloud Function Routine Container
+      uses: google-github-actions/deploy-cloud-functions@v4
+      timeout-minutes: 10
+      with:
+        name: coral-upload-pipeline
+        runtime: python312
+        environment: GEN_2
+        memory: '8G'
+        cpu: 4
+        max_instance_count: 5
+        source_dir: ./backend
+        entry_point: process_coral_upload
+        region: us-central1
+        # TODO: fix this at some point eg. to allow only for authenticated users?
+        ingress_settings: ALLOW_ALL
+        environment_variables: |
+          SUPABASE_URL=${{ vars.SUPABASE_URL }}
+          SUPABASE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BUCKET_NAME=${{ vars.GCP_BUCKET_NAME }}
+          GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          SEGMENTATION_PROVIDER=${{ vars.SEGMENTATION_PROVIDER }}
+    
+    - name: Configure Public Invocations IAM Permissions
+      run: |
+        gcloud run services add-iam-policy-binding coral-upload-pipeline \
+          --region=us-central1 \
+          --member="allUsers" \
+          --role="roles/run.invoker"
+
+  # ==========================================
+  # JOB 2: SHIP STATIC WORKSPACE FRONTEND
+  # ==========================================
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    environment: MCCR-MVP
+
+    steps:
+    - name: Checkout Repository Source Tree
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install Frontend Dependencies
+      working-directory: frontend
+      run: npm ci
+
+    - name: Build Vue Production Application
+      working-directory: frontend
+      run: npm run build
+
+    - name: Authenticate to Google Cloud Engine
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Synchronize Compiled Frontend Assets
+      uses: google-github-actions/upload-cloud-storage@v3
+      with:
+        path: ./frontend/dist
+        destination: ${{ vars.GCP_STATIC_WEB_BUCKET_NAME }}
+        parent: false
