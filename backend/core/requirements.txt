@@ -22,7 +22,8 @@ python-dotenv==1.0.1
 pytest==8.2.2
 psutil
 
-opencv-python==4.11.0.86
+#opencv-python==4.11.0.86
+opencv-python-headless>=4.11
 matplotlib==3.10.3
 scikit-image==0.25.2
 
