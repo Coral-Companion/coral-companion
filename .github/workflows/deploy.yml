@@ -29,20 +29,34 @@ jobs:
       #  with:
       #    credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Set docker image repository
+        run: |
+          DOCKER_IMAGE_REPOSITORY="ghcr.io/${{ github.repository }}"
+          
+          # Standard Bash 4+ lowercase manipulation
+          DOCKER_IMAGE_REPOSITORY_LOWERCASE="${DOCKER_IMAGE_REPOSITORY,,}"
+          
+          # Save it to the GitHub Output environment for later steps
+          echo "repo=${DOCKER_IMAGE_REPOSITORY_LOWERCASE}" >> $GITHUB_OUTPUT
+        id: set_repo_name
+
+      - name: Use the lowercase value
+        run: echo "The lowercase user is ${{ steps.set_repo_name.outputs.repo }}"
+
       # 3. Build & Push Backend Core
       - name: Build and Push Backend Core
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository }}/backend-core:latest \
+            -t ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest \
             ./backend/core
-          docker push ghcr.io/${{ github.repository }}/backend-core:latest
+          docker push ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
 
       # 4. Build & Push Segmentation Worker
       - name: Build and Push Segmentation Worker
         run: |
           docker build \
-            -t ghcr.io/${{ github.repository }}/segmentation-worker:latest ./backend/segmentation-worker
-          docker push ghcr.io/${{ github.repository }}/segmentation-worker:latest
+            -t ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest ./backend/segmentation-worker
+          docker push ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
 
       # 5. Deploy Backend Core to Cloud Run
       #- name: Deploy Backend Core to Cloud Run
@@ -50,7 +64,7 @@ jobs:
       #  with:
       #    service: backend-core-service-name # Replace with your actual Cloud Run service name
       #    region: us-central1 # Replace with your region
-      #    image: ghcr.io/${{ github.repository }}/backend-core:latest
+      #    image: ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
       #    env_vars: |
       #      SUPABASE_URL=${{ secrets.SUPABASE_URL }}
       #      SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
@@ -66,7 +80,7 @@ jobs:
       #  with:
       #    service: segmentation-worker-service-name # Replace with your actual Cloud Run service name
       #    region: us-central1 # Replace with your region
-      #    image: ghcr.io/${{ github.repository }}/segmentation-worker:latest
+      #    image: ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
       #    env_vars: |
       #      EMBEDDING_VECTOR_DISTANCE_THRESHOLD=0.2
       #      CROPPING_PADDING_RATIO=0.1
