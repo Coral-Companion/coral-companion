@@ -9,13 +9,22 @@ export interface Env {
     };
 }
 
+export class BackendCore extends Container {
+    defaultPort = 8080;
+    sleepAfter = "10m";
+}
+/*export class BackendSegmentationWorker extends Container {
+    defaultPort = 8080;
+    sleepAfter = "2m";
+}*/
+
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const url = new URL(request.url);
 
-        if (url.pathname.startsWith("/api/segment")) {
+        /*if (url.pathname.startsWith("/api/segment")) {
             return env.SEGMENTATION_CONTAINER.fetch(request);
-        }
+        }*/
 
         if (url.pathname.startsWith("/api/")) {
             // Strip prefix if needed before passing to the container
@@ -24,6 +33,6 @@ export default {
         }
 
 
-        return new Response("Not Found", { status: 404 });
+        return env.ASSETS.fetch(request);
     },
 };

@@ -49,3 +49,9 @@ frontend/.vite/
 **/yarn-debug.log*
 **/yarn-error.log*
 **/coverage/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
