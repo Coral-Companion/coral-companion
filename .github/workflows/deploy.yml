@@ -52,11 +52,11 @@ jobs:
           docker push ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
 
       - name: Install Wrangler
-        working-directory: infrastructure
+        working-directory: api-router
         run: npm ci
 
       - name: Deploy to Cloudflare
-        working-directory: infrastructure
+        working-directory: api-router
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -104,14 +104,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: infrastructure/package-lock.json
+          cache-dependency-path: api-router/package-lock.json
 
       - name: Install dependencies
-        working-directory: infrastructure
+        working-directory: api-router
         run: npm ci
 
       - name: Deploy
-        working-directory: infrastructure
+        working-directory: api-router
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
