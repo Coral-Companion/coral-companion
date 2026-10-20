@@ -16,12 +16,12 @@ jobs:
         uses: actions/checkout@v4
 
       # 1. Authenticate to GitHub Container Registry (GHCR)
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      #- name: Log in to Container Registry
+      #  uses: docker/login-action@v3
+      #  with:
+      #    registry: ghcr.io
+      #    username: ${{ github.actor }}
+      #    password: ${{ secrets.GITHUB_TOKEN }}
 
       # 2. Authenticate to Google Cloud
       #- name: Authenticate to Google Cloud
@@ -29,27 +29,27 @@ jobs:
       #  with:
       #    credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      - name: Set docker image repository
-        run: |
-          DOCKER_IMAGE_REPOSITORY="ghcr.io/${{ github.repository }}"
-          DOCKER_IMAGE_REPOSITORY_LOWERCASE="${DOCKER_IMAGE_REPOSITORY,,}"
-          echo "repo=${DOCKER_IMAGE_REPOSITORY_LOWERCASE}" >> $GITHUB_OUTPUT
-        id: set_repo_name
+      #- name: Set docker image repository
+      #  run: |
+      #    DOCKER_IMAGE_REPOSITORY="ghcr.io/${{ github.repository }}"
+      #    DOCKER_IMAGE_REPOSITORY_LOWERCASE="${DOCKER_IMAGE_REPOSITORY,,}"
+      #    echo "repo=${DOCKER_IMAGE_REPOSITORY_LOWERCASE}" >> $GITHUB_OUTPUT
+      #  id: set_repo_name
 
       # 3. Build & Push Backend Core
-      - name: Build and Push Backend Core
-        run: |
-          docker build \
-            -t ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest \
-            ./backend/core
-          docker push ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
-
-      # 4. Build & Push Segmentation Worker
-      - name: Build and Push Segmentation Worker
-        run: |
-          docker build \
-            -t ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest ./backend/segmentation-worker
-          docker push ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
+      #- name: Build and Push Backend Core
+      #  run: |
+      #    docker build \
+      #      -t ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest \
+      #      ./backend/core
+      #    docker push ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
+#
+      ## 4. Build & Push Segmentation Worker
+      #- name: Build and Push Segmentation Worker
+      #  run: |
+      #    docker build \
+      #      -t ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest ./backend/segmentation-worker
+      #    docker push ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
 
       - name: Build Frontend
         run: |
@@ -94,31 +94,3 @@ jobs:
       #    env_vars: |
       #      EMBEDDING_VECTOR_DISTANCE_THRESHOLD=0.2
       #      CROPPING_PADDING_RATIO=0.1
-
-  deploy:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: api-router/package-lock.json
-
-      - name: Install dependencies
-        working-directory: api-router
-        run: npm ci
-
-      - name: Deploy
-        working-directory: api-router
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: npx wrangler deploy
