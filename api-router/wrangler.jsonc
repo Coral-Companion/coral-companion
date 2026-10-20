@@ -49,15 +49,6 @@
 			}*/
 		]
 	},
-	"migrations": [
-		{
-			"new_sqlite_classes": [
-				"BackendCore",
-				//"BackendSegmentationWorker"
-			],
-			"tag": "v1"
-		}
-	],
 	"exports": {
 		"BackendCore": {
 			"type": "durable-object",
