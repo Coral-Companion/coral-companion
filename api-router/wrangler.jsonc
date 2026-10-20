@@ -12,9 +12,6 @@
 	"assets": {
 		"directory": "../frontend/dist",
 		"binding": "ASSETS",
-		/*		"run_worker_first": [
-			"/api/*" // API routes skip static asset handling
-		]*/
 		"not_found_handling": "single-page-application",
 		"run_worker_first": [
 			"/api/*"
@@ -30,23 +27,14 @@
 				"disk_mb": 4000,
 			},
 			"max_instances": 3
-		},
-		/*{
-			"class_name": "BackendSegmentationWorker",
-			"image": "../backend/segmentation-worker/Dockerfile",
-			"max_instances": 1
-		}*/
+		}
 	],
 	"durable_objects": {
 		"bindings": [
 			{
 				"class_name": "BackendCore",
 				"name": "CORE_CONTAINER"
-			},
-			/*{
-				"class_name": "BackendSegmentationWorker",
-				"name": "SEGMENTATION_CONTAINER"
-			}*/
+			}
 		]
 	},
 	"exports": {
@@ -54,6 +42,18 @@
 			"type": "durable-object",
 			"storage": "sqlite"
 		}
+	},
+	"vars": {
+		"BUCKET_NAME": "coral-matcher-media",
+		"GOOGLE_CLOUD_PROJECT": "coral-matcher",
+		"SEGMENTATION_PROVIDER": "fixture"
+	},
+	"secrets": {
+		"required": [
+			"SUPABASE_KEY",
+			"DATABASE_URL",
+			"SEGMENTATION_WORKER_URL",
+		]
 	},
 	"previews": {}
 }

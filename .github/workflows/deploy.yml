@@ -76,7 +76,6 @@ jobs:
       #    region: us-central1 # Replace with your region
       #    image: ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
       #    env_vars: |
-      #      SUPABASE_URL=${{ secrets.SUPABASE_URL }}
       #      SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
       #      DATABASE_URL=${{ secrets.DATABASE_URL }}
       #      BUCKET_NAME=${{ vars.BUCKET_NAME }}
