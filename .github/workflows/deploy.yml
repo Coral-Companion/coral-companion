@@ -51,6 +51,10 @@ jobs:
             -t ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest ./backend/segmentation-worker
           docker push ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
 
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend
+
       - name: Install Wrangler
         working-directory: api-router
         run: npm ci
