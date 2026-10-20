@@ -58,5 +58,11 @@
 			"tag": "v1"
 		}
 	],
+	"exports": {
+		"BackendCore": {
+			"type": "durable-object",
+			"storage": "sqlite"
+		}
+	},
 	"previews": {}
 }
