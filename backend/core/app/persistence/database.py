@@ -1,6 +1,7 @@
 from sqlmodel import create_engine, Session
 from sqlmodel import SQLModel
 import os
+import psycopg
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -9,11 +10,19 @@ load_dotenv()
 from app.domain.monitoring_session import MonitoringSession
 from app.domain.observation import Observation
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgresql://",
+        "postgresql+psycopg://",
+        1,
+    )
 
 engine = create_engine(
     DATABASE_URL,
     echo=True,
+    module=psycopg
 )
 
 def get_session() -> Session:
