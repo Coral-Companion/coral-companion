@@ -15,7 +15,7 @@ export interface Env {
 }
 
 export class BackendCore extends Container {
-    defaultPort = 8080;
+    defaultPort = 8000;
     sleepAfter = "10m";
 
     constructor(ctx: DurableObjectState, env: Env) {
