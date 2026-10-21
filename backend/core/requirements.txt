@@ -22,7 +22,7 @@ psutil
 opencv-python-headless>=4.11
 
 # TODO: extract
-#matplotlib==3.10.3
+matplotlib==3.10.3
 scikit-image==0.25.2
 
 #segment-anything>=1.0
