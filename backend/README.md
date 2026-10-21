@@ -65,7 +65,7 @@ $ pytest -s test_vision.py
 ### Run core api
 ```
 $ cd backend/core
-$ uvicorn app.api.main:app --reload --port 8080 --app-dir . --log-level debug
+$ uvicorn app.api.main:app --reload --port 8000 --app-dir . --log-level debug
 ``` 
 
 ### Run segmentation-worker
