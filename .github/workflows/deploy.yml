@@ -5,51 +5,14 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-and-deploy-to-cloudflare:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Required if pushing to GitHub Container Registry (GHCR)
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # 1. Authenticate to GitHub Container Registry (GHCR)
-      #- name: Log in to Container Registry
-      #  uses: docker/login-action@v3
-      #  with:
-      #    registry: ghcr.io
-      #    username: ${{ github.actor }}
-      #    password: ${{ secrets.GITHUB_TOKEN }}
-
-      # 2. Authenticate to Google Cloud
-      #- name: Authenticate to Google Cloud
-      #  uses: google-github-actions/auth@v2
-      #  with:
-      #    credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      #- name: Set docker image repository
-      #  run: |
-      #    DOCKER_IMAGE_REPOSITORY="ghcr.io/${{ github.repository }}"
-      #    DOCKER_IMAGE_REPOSITORY_LOWERCASE="${DOCKER_IMAGE_REPOSITORY,,}"
-      #    echo "repo=${DOCKER_IMAGE_REPOSITORY_LOWERCASE}" >> $GITHUB_OUTPUT
-      #  id: set_repo_name
-
-      # 3. Build & Push Backend Core
-      #- name: Build and Push Backend Core
-      #  run: |
-      #    docker build \
-      #      -t ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest \
-      #      ./backend/core
-      #    docker push ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
-#
-      ## 4. Build & Push Segmentation Worker
-      #- name: Build and Push Segmentation Worker
-      #  run: |
-      #    docker build \
-      #      -t ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest ./backend/segmentation-worker
-      #    docker push ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
 
       - name: Build Frontend
         run: |
@@ -68,28 +31,39 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: npx wrangler deploy
 
-      # 5. Deploy Backend Core to Cloud Run
-      #- name: Deploy Backend Core to Cloud Run
-      #  uses: google-github-actions/deploy-cloudrun@v2
-      #  with:
-      #    service: backend-core-service-name # Replace with your actual Cloud Run service name
-      #    region: us-central1 # Replace with your region
-      #    image: ${{ steps.set_repo_name.outputs.repo }}/backend-core:latest
-      #    env_vars: |
-      #      SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}
-      #      DATABASE_URL=${{ secrets.DATABASE_URL }}
-      #      BUCKET_NAME=${{ vars.BUCKET_NAME }}
-      #      GOOGLE_CLOUD_PROJECT=${{ vars.GOOGLE_CLOUD_PROJECT }}
-      #      SEGMENTATION_PROVIDER=${{ vars.SEGMENTATION_PROVIDER }}
-      #      SEGMENTATION_WORKER_URL=${{ secrets.SEGMENTATION_WORKER_URL }}
-#
-      ## 6. Deploy Segmentation Worker to Cloud Run
-      #- name: Deploy Segmentation Worker to Cloud Run
-      #  uses: google-github-actions/deploy-cloudrun@v2
-      #  with:
-      #    service: segmentation-worker-service-name # Replace with your actual Cloud Run service name
-      #    region: us-central1 # Replace with your region
-      #    image: ${{ steps.set_repo_name.outputs.repo }}/segmentation-worker:latest
-      #    env_vars: |
-      #      EMBEDDING_VECTOR_DISTANCE_THRESHOLD=0.2
-      #      CROPPING_PADDING_RATIO=0.1
+  build-and-deploy-to-modal:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for segmentation worker changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: main
+          filters: |
+            segmentation-changed:
+              - 'backend/segmentation-worker/**'
+
+      - name: Set up Python
+        if: steps.filter.outputs.segmentation-changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Modal
+        if: steps.filter.outputs.segmentation-changed == 'true'
+        run: python -m pip install --upgrade modal
+
+      - name: Deploy segmentation worker
+        if: steps.filter.outputs.segmentation-changed == 'true'
+        working-directory: backend/segmentation-worker
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: modal deploy modal_worker.py
