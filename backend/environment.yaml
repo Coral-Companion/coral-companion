@@ -12,6 +12,7 @@ dependencies:
   - torchvision>=0.20.0
   - pytorch-cuda=13.2
   - pytest==8.2.2
+  - modal
   
   - pip:
       - -r requirements.txt

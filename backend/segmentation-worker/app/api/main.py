@@ -1,33 +1,61 @@
+import gc
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, HTTPException, Request, File
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from dataclasses import asdict
+from pathlib import Path
 
 import cv2
 import numpy as np
 import torch
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 
-import logging
-from pathlib import Path
+from third_party.coralscop.segment_anything import (
+    SamAutomaticMaskGenerator,
+    sam_model_registry,
+)
+from app.utils.performance_profiler import performance_stage
+from .models import BoundingBox, Point, Segment, SegmentationResult
 
-from third_party.coralscop.segment_anything import SamAutomaticMaskGenerator, sam_model_registry
-from app.utils.performance_profiler import performance_stage, log_memory
-from .models import Segment, BoundingBox, Point, SegmentationResult
-
-model_type = "vit_b"
-
-# Piggyback on uvicorn logger infrastructure
 logger = logging.getLogger("uvicorn.error")
+
+MODEL_TYPE = "vit_b"
+MAX_UPLOAD_MEGABYTES = 15
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MEGABYTES * 1024 * 1024
+MAX_IMAGE_PIXELS = 40_000_000
+
+
+def load_mask_generator(checkpoint_path: Path, device: str):
+    """Load CoralSCOP once and return its mask generator."""
+    
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
+
+    logger.info(f"Loading CoralSCOP: device={device} checkpoint={checkpoint_path}")
+
+    sam = sam_model_registry[MODEL_TYPE](checkpoint=str(checkpoint_path))
+    sam.to(device=device)
+
+    generator = SamAutomaticMaskGenerator(
+        model=sam,
+        points_per_side=10,
+        pred_iou_thresh=0.75,
+        stability_score_thresh=0.75,
+        crop_n_layers=0,
+        crop_n_points_downscale_factor=2,
+        min_mask_region_area=100,
+        points_per_batch=32,
+    )
+
+    logger.info("CoralSCOP loaded successfully on %s", device)
+    return generator
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    The model is loaded once when the container boots,
-    preventing cold-start penalties on every request.
-    """
-    logger.info("Initializing Segmentation Worker")
-    
+    logger.info("Initializing segmentation worker")
+
     checkpoint_path = (
         Path(__file__).resolve().parents[2]
         / "third_party"
@@ -35,115 +63,136 @@ async def lifespan(app: FastAPI):
         / "checkpoints"
         / "vit_b_coralscop.pth"
     )
-    
-    # Determine device (prepare for your future GPU transition)
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Loading CoralSCOP onto {device}...")
+
+    app.state.mask_generator = None
+    app.state.device = device
+
     try:
-        sam = sam_model_registry[model_type](checkpoint=str(checkpoint_path))
-        sam.to(device=device)
-        
-        # TODO: make arguments parameterizable: points_per_side, layers, points_per_batch
-        app.state.mask_generator = SamAutomaticMaskGenerator(
-            model=sam,
-            points_per_side=10,
-            pred_iou_thresh=0.75,
-            stability_score_thresh=0.75,
-            crop_n_layers=0,
-            crop_n_points_downscale_factor=2,
-            min_mask_region_area=100,
-            points_per_batch=32
-        )
-        
-        logger.info("Model loaded successfully.")
-    except Exception as e:
-        logger.exception(f"Failed to load model: {e}", e)
-        raise e
+        app.state.mask_generator = load_mask_generator(checkpoint_path, device)
+        yield
+    finally:
+        logger.info("Cleaning up segmentation worker")
+        app.state.mask_generator = None
+        gc.collect()
 
-    # Serve requests while in this state
-    yield
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
-    # Teardown logic when the container scales to zero or shuts down
-    print("Shutting down ML Worker, clearing memory...")
-    mask_generator = {}
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
+        logger.info("Segmentation worker cleanup completed")
 
-app = FastAPI(title="Coral Monitoring ML Worker", lifespan=lifespan)
+
+app = FastAPI(
+    title="Coral Monitoring ML Worker",
+    lifespan=lifespan,
+)
+
 
 @app.get("/health")
 async def health_check(request: Request):
-    """Lightweight endpoint for container health probes."""
+    generator = get_mask_generator(request)
     return {
-        "status": "healthy",
-        "device": "cuda" if torch.cuda.is_available() else "cpu",
-        "model_loaded": get_mask_generator(request)
+        "status": "healthy" if generator is not None else "starting",
+        "device": request.app.state.device,
+        "model_loaded": generator is not None,
     }
 
 
 @app.post("/api/segment")
 async def segment_image(request: Request, file: UploadFile = File(...)):
-    """Receives an image, runs inference, and returns masks."""
     mask_generator = get_mask_generator(request)
     if mask_generator is None:
         raise HTTPException(status_code=503, detail="Model not loaded.")
 
     try:
         image, rgb = await prepare_image(file)
-        
+    finally:
+        await file.close()
+
+    try:
+        logger.info(
+            f"Starting inference: width={image.shape[1]} height={image.shape[0]} device={request.app.state.device}"
+        )
+
         with performance_stage("Segmentation"):
             masks = mask_generator.generate(rgb)
 
         segments: list[Segment] = []
+
         for index, mask_record in enumerate(masks):
             segmentation = mask_record.get("segmentation")
             bbox = mask_record.get("bbox", [0, 0, 0, 0])
             polygon_points = []
+
             if isinstance(segmentation, np.ndarray):
                 mask = segmentation
                 mask = (mask > 0).astype(np.uint8) * 255
-                contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                contours, _ = cv2.findContours(
+                    mask,
+                    cv2.RETR_EXTERNAL,
+                    cv2.CHAIN_APPROX_NONE,
+                )
                 if contours:
                     contour = max(contours, key=cv2.contourArea)
-                    polygon_points = [Point(int(x), int(y)) for x, y in contour.reshape(-1, 2)]
+                    polygon_points = [
+                        Point(int(x), int(y))
+                        for x, y in contour.reshape(-1, 2)
+                    ]
 
             segments.append(
                 build_segment(index, mask_record, bbox, polygon_points)
             )
 
         height, width = image.shape[:2]
+        logger.info(f"Inference resulted in {len(segments)} segments")
 
+        result = SegmentationResult(
+            image_width=int(width),
+            image_height=int(height),
+            segments=segments,
+        )
         return JSONResponse(
-            content={
-                "result": jsonable_encoder(asdict(SegmentationResult(
-                        image_width=int(width),
-                        image_height=int(height),
-                        segments=segments
-                    )))
-            }
+            content={"result": jsonable_encoder(asdict(result))}
         )
 
-    except Exception as e:
-        logger.exception("An error occurred", e)
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("Segmentation inference failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Segmentation inference failed.",
+        )
 
-def get_mask_generator(request):
+
+def get_mask_generator(request: Request):
     return getattr(request.app.state, "mask_generator", None)
 
-async def prepare_image(file):
-    file_bytes = await file.read()
-    file_ndarray = np.frombuffer(file_bytes, np.uint8)
-    image = cv2.imdecode(file_ndarray, cv2.IMREAD_COLOR)
+
+async def prepare_image(file: UploadFile):
+    file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
+
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    if len(file_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"Image exceeds the {MAX_UPLOAD_MEGABYTES} MB limit.")
+
+    file_array = np.frombuffer(file_bytes, dtype=np.uint8)
+    image = cv2.imdecode(file_array, cv2.IMREAD_COLOR)
+
     if image is None:
-        logger.warning("Decoding image resulted in 'None'")
+        logger.warning("Image decoding failed")
         raise HTTPException(status_code=400, detail="Invalid image file format.")
-    elif len(image.shape) != 3:
-        logger.warning(f"Expected BGR image. Received image with shape length {len(image.shape)}")
-        raise HTTPException(400, "Image dimensions off. Expected BGR image")
+
+    height, width = image.shape[:2]
+    if height * width > MAX_IMAGE_PIXELS:
+        raise HTTPException(
+            status_code=413,
+            detail="Image dimensions exceed the allowed pixel limit.",
+        )
 
     rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    cv2.imwrite("test.jpg", image)
-    return image,rgb
+    return image, rgb
+
 
 def build_segment(index, mask_record, bbox, polygon_points):
     return Segment(
