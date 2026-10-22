@@ -46,7 +46,7 @@
 	"vars": {
 		"BUCKET_NAME": "coral-matcher-media",
 		"GOOGLE_CLOUD_PROJECT": "coral-matcher",
-		"SEGMENTATION_PROVIDER": "fixture"
+		"SEGMENTATION_PROVIDER": "coralscop"
 	},
 	"secrets": {
 		"required": [
