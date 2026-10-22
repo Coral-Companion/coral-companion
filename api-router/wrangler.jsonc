@@ -53,6 +53,8 @@
 			"SUPABASE_KEY",
 			"DATABASE_URL",
 			"SEGMENTATION_WORKER_URL",
+			"MODAL_KEY",
+			"MODAL_SECRET",
 		]
 	},
 	"previews": {}

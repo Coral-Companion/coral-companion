@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
-
 from app.segmentation.models import SegmentationResult
 from app.segmentation.segmentation_provider import SegmentationProvider
 from app.segmentation.fixture_exporter import export_segmentation_fixture
@@ -11,10 +9,10 @@ import logging
 import httpx
 from fastapi import HTTPException, status
 from pydantic import ValidationError
-from typing import BinaryIO
-import json
 
 SEGMENTATION_WORKER_URL = os.getenv("SEGMENTATION_WORKER_URL", "http://localhost:8001")
+MODAL_KEY = os.getenv("MODAL_KEY", "")
+MODAL_SECRET = os.getenv("MODAL_SECRET", "")
 PRODUCE_FIXTURES = os.getenv("PRODUCE_FIXTURES", False)
 
 class CoralScopProvider(SegmentationProvider):
@@ -32,34 +30,34 @@ class CoralScopProvider(SegmentationProvider):
         url = f"{self.base_url}/api/segment"
         files = {"file": (image_filename, image, "image/jpeg")}
         timeout = httpx.Timeout(120.0, connect=10.0)
+        headers = {
+            "Modal-Key": MODAL_KEY,
+            "Modal-Secret": MODAL_SECRET,
+        }
 
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
-                response = await client.post(url, files=files)
+                response = await client.post(
+                    url, 
+                    files=files, 
+                    headers=headers)
                 response.raise_for_status()
                 response_json = response.json()
-                # 1. Print exactly what the worker sent
-                print("🚨 RAW JSON FROM WORKER:")
-                print(json.dumps(response_json, indent=2))
-                
-                # 2. Try to validate
                 result = SegmentationResult.model_validate(response_json["result"])
 
             except ValidationError as e:
-                # 3. Print exactly why Pydantic rejected it
-                print("🚨 PYDANTIC VALIDATION ERROR:")
-                print(e)
-                raise  # Re-raise so your app still fails properly during debugging
+                self.logger.exception("Validation error after segmentation", e)
+                raise
 
             except httpx.ConnectError:
-                self.logger.error(f"Could not connect to ML Worker at {self.base_url}")
+                self.logger.error(f"Could not connect to segmentation worker at {self.base_url}")
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail="Segmentation worker service is currently unreachable.",
                 )
-                
+
             except httpx.HTTPStatusError as e:
-                self.logger.error(f"ML Worker returned error: {e.response.text}")
+                self.logger.error(f"Segmentation worker returned error: {e.response.text}")
                 raise HTTPException(
                     status_code=e.response.status_code,
                     detail=f"Segmentation worker failed: {e.response.text}",
@@ -76,7 +74,8 @@ class CoralScopProvider(SegmentationProvider):
             try:
                 export_segmentation_fixture(image, image_filename, result.segments)
             except Exception as e:
-                self.logger.exception(f"[Segmentation] Failed writing fixture. {str(e)}")
+                self.logger.exception(f"Segmentation failed writing fixture. {str(e)}")
+                # no need to raise, this is not critical
         
         return result
 

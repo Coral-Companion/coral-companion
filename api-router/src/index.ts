@@ -8,6 +8,8 @@ export interface Env {
     SUPABASE_KEY: string;
     DATABASE_URL: string;
     SEGMENTATION_WORKER_URL: string;
+    MODAL_KEY: string;
+    MODAL_SECRET: string;
 
     BUCKET_NAME: string;
     GOOGLE_CLOUD_PROJECT: string;
@@ -25,6 +27,8 @@ export class BackendCore extends Container {
             SUPABASE_KEY: env.SUPABASE_KEY,
             DATABASE_URL: env.DATABASE_URL,
             SEGMENTATION_WORKER_URL: env.SEGMENTATION_WORKER_URL,
+            MODAL_SECRET: env.MODAL_SECRET,
+            MODAL_KEY: env.MODAL_KEY,
 
             BUCKET_NAME: env.BUCKET_NAME,
             GOOGLE_CLOUD_PROJECT: env.GOOGLE_CLOUD_PROJECT,
