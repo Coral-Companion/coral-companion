@@ -78,7 +78,7 @@ jobs:
           mkdir -p "$(dirname "$CHECKPOINT")"
 
           aws s3 cp \
-            s3://coral-companion-models-prod/coralscop/vit_b_coralscop-v1.pth \
+            s3://coral-companion-models/coralscop/vit_b_coralscop-v1.pth \
             "$CHECKPOINT" \
             --endpoint-url "$R2_ENDPOINT"
 
