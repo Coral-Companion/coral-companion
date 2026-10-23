@@ -1,8 +1,14 @@
+[![Build and Deployment Status](https://github.com/Coral-Companion/coral-companion/actions/workflows/deploy.yml/badge.svg)](https://github.com/Coral-Companion/coral-companion/actions/workflows/deploy.yml)
+
 # Philosophy
 
-> To make coral restoration monitoring accessible so that we can save the world’s reefs step by step, coral by coral
+**To make coral restoration monitoring accessible so that we can save the world’s reefs step by step, coral by coral**
 
-Monitoring restored individual coral colonies often involves taking photographs in the field and then manually identifying, measuring, and comparing colonies across monitoring sessions. This is very time-consuming and certain approaches require high technical saviness. Coral Companion aims to tackle these issues.
+Coral Companion is an open-source computer-vision platform that helps coral conservation and restoration projects monitor individual coral colonies over time.
+
+It uses functionality of the AI and computer vision world to segment coral colonies, match them across surveys, and support automated measurement and longitudinal analysis. By turning underwater imagery into structured, comparable observations, Coral Companion aims to reduce manual effort, make monitoring more accessible, and help practitioners evaluate restoration outcomes.
+
+Learn more at https://coralcompanion.earth.
 
 
 # Overview
