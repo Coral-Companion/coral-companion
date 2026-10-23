@@ -57,12 +57,12 @@ jobs:
           python-version: '3.11'
 
       - name: Install AWS CLI
-        if: steps.filter.outputs.segmentation == 'true'
+        if: steps.filter.outputs.segmentation-changed == 'true'
         run: |
           python -m pip install --upgrade awscli
 
       - name: Download CoralSCOP checkpoint from R2
-        if: steps.filter.outputs.segmentation == 'true'
+        if: steps.filter.outputs.segmentation-changed == 'true'
         working-directory: backend/segmentation-worker
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
