@@ -25,7 +25,6 @@ MAX_UPLOAD_MEGABYTES = 15
 MAX_UPLOAD_BYTES = MAX_UPLOAD_MEGABYTES * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
 
-
 def load_mask_generator(checkpoint_path: Path, device: str):
     """Load CoralSCOP once and return its mask generator."""
     
