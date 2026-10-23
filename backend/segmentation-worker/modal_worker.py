@@ -1,6 +1,4 @@
-
 from pathlib import Path
-
 import modal
 
 ROOT = Path(__file__).resolve().parent
@@ -29,8 +27,7 @@ image = (
     .add_local_file(
         str(CHECKPOINT),
         remote_path=(
-            "/root/third_party/coralscop/checkpoints/"
-            "vit_b_coralscop.pth"
+            "/root/third_party/coralscop/checkpoints/vit_b_coralscop.pth"
         ),
     )
 )
