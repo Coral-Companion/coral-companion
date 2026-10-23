@@ -81,7 +81,6 @@ async def lifespan(app: FastAPI):
 
         logger.info("Segmentation worker cleanup completed")
 
-
 app = FastAPI(
     title="Coral Monitoring ML Worker",
     lifespan=lifespan,
@@ -96,7 +95,6 @@ async def health_check(request: Request):
         "device": request.app.state.device,
         "model_loaded": generator is not None,
     }
-
 
 @app.post("/api/segment")
 async def segment_image(request: Request, file: UploadFile = File(...)):

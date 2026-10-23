@@ -56,6 +56,36 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install AWS CLI
+        if: steps.filter.outputs.segmentation == 'true'
+        run: |
+          python -m pip install --upgrade awscli
+
+      - name: Download CoralSCOP checkpoint from R2
+        if: steps.filter.outputs.segmentation == 'true'
+        working-directory: backend/segmentation-worker
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          CHECKPOINT="third_party/coralscop/checkpoints/vit_b_coralscop.pth"
+          R2_ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          mkdir -p "$(dirname "$CHECKPOINT")"
+
+          aws s3 cp \
+            s3://coral-companion-models-prod/coralscop/vit_b_coralscop-v1.pth \
+            "$CHECKPOINT" \
+            --endpoint-url "$R2_ENDPOINT"
+
+          test -s "$CHECKPOINT"
+          echo "Checkpoint downloaded successfully."
+          ls -lh "$CHECKPOINT"
+
       - name: Install Modal
         if: steps.filter.outputs.segmentation-changed == 'true'
         run: python -m pip install --upgrade modal
