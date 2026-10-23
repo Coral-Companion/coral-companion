@@ -46,7 +46,8 @@
 	"vars": {
 		"BUCKET_NAME": "coral-matcher-media",
 		"GOOGLE_CLOUD_PROJECT": "coral-matcher",
-		"SEGMENTATION_PROVIDER": "coralscop"
+		"SEGMENTATION_PROVIDER": "coralscop",
+		"R2_PUBLIC_BASE_URL": "https://media.coralcompanion.earth"
 	},
 	"secrets": {
 		"required": [
@@ -55,6 +56,9 @@
 			"SEGMENTATION_WORKER_URL",
 			"MODAL_KEY",
 			"MODAL_SECRET",
+			"R2_ACCOUNT_ID",
+			"R2_ACCESS_KEY_ID",
+			"R2_SECRET_ACCESS_KEY",
 		]
 	},
 	"previews": {}

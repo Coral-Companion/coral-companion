@@ -7,12 +7,17 @@ export interface Env {
 
     SUPABASE_KEY: string;
     DATABASE_URL: string;
+
     SEGMENTATION_WORKER_URL: string;
     MODAL_KEY: string;
     MODAL_SECRET: string;
-
+    
+    R2_ACCOUNT_ID: string;
+    R2_ACCESS_KEY_ID: string;
+    R2_SECRET_ACCESS_KEY: string;
+    
+    R2_PUBLIC_BASE_URL: string;
     BUCKET_NAME: string;
-    GOOGLE_CLOUD_PROJECT: string;
     SEGMENTATION_PROVIDER: string;
 }
 
@@ -26,12 +31,17 @@ export class BackendCore extends Container {
         this.envVars = {
             SUPABASE_KEY: env.SUPABASE_KEY,
             DATABASE_URL: env.DATABASE_URL,
+            
             SEGMENTATION_WORKER_URL: env.SEGMENTATION_WORKER_URL,
             MODAL_SECRET: env.MODAL_SECRET,
             MODAL_KEY: env.MODAL_KEY,
+            
+            R2_ACCOUNT_ID: env.R2_ACCOUNT_ID,
+            R2_ACCESS_KEY_ID: env.R2_ACCESS_KEY_ID,
+            R2_SECRET_ACCESS_KEY: env.R2_SECRET_ACCESS_KEY,
+            R2_PUBLIC_BASE_URL: env.R2_PUBLIC_BASE_URL,
 
             BUCKET_NAME: env.BUCKET_NAME,
-            GOOGLE_CLOUD_PROJECT: env.GOOGLE_CLOUD_PROJECT,
             SEGMENTATION_PROVIDER: env.SEGMENTATION_PROVIDER,
         };
     }
