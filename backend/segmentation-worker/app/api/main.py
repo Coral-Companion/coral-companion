@@ -50,7 +50,6 @@ def load_mask_generator(checkpoint_path: Path, device: str):
     logger.info("CoralSCOP loaded successfully on %s", device)
     return generator
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing segmentation worker")
