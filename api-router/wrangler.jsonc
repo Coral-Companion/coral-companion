@@ -26,7 +26,13 @@
 				"memory_mib": 3072,
 				"disk_mb": 4000,
 			},
-			"max_instances": 3
+			"max_instances": 3,
+			"authorized_keys": [
+				{
+					"name": "key ken",
+					"public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHQt2YI1elj+RGIr1NB1ZLQDnZv1n7TLDrXgE5/KzQw ken.iseli@gmail.com"
+				}
+			]
 		}
 	],
 	"durable_objects": {
@@ -45,7 +51,7 @@
 	},
 	"vars": {
 		"BUCKET_NAME": "coral-matcher-media",
-		"SEGMENTATION_PROVIDER": "coralscop",
+		"SEGMENTATION_PROVIDER": "fixture",
 		"R2_PUBLIC_BASE_URL": "https://media.coralcompanion.earth"
 	},
 	"secrets": {
