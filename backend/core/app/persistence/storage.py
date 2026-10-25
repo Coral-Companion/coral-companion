@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-import requests
+import httpx
 from PIL import Image
 from io import BytesIO
 from botocore.client import BaseClient
@@ -71,9 +71,10 @@ def save_debug_image(image: np.ndarray, destination_path: str) -> None:
     cv2.imwrite(destination_path, image)
 
 def load_image(url: str) -> np.ndarray:
-    response = requests.get(url)
-    img = Image.open(BytesIO(response.content))
-    return np.array(img)
+    response = httpx.get(url)
+    response.raise_for_status() 
+    image = Image.open(BytesIO(response.content))
+    return np.array(image)
 
 def get_url_from_key(key: str) -> str:
     """Produce public URL for object with given key"""
