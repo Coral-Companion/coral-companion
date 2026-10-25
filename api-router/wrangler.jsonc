@@ -45,7 +45,6 @@
 	},
 	"vars": {
 		"BUCKET_NAME": "coral-matcher-media",
-		"GOOGLE_CLOUD_PROJECT": "coral-matcher",
 		"SEGMENTATION_PROVIDER": "coralscop",
 		"R2_PUBLIC_BASE_URL": "https://media.coralcompanion.earth"
 	},
