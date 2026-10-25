@@ -51,9 +51,7 @@ def upload_image_bytes_to_bucket(
     destination_path: str,
     content_type: str = "image/jpeg",
 ) -> str:
-    """Upload image bytes to R2 and return the public URL."""
-    if not R2_PUBLIC_BASE_URL:
-        raise RuntimeError("R2_PUBLIC_BASE_URL is not configured.")
+    """Upload image bytes to R2 and return the object key."""
 
     if not destination_path or destination_path.startswith("/"):
         raise ValueError("destination_path must be a relative object key.")
@@ -63,10 +61,7 @@ def upload_image_bytes_to_bucket(
     logger.debug(f"Uploading image to R2: bucket={BUCKET_NAME}, key={destination_path}, bytes={len(image_bytes)}")
     client.put_object(Bucket=BUCKET_NAME, Key=destination_path, Body=image_bytes, ContentType=content_type)
 
-    encoded_path = quote(destination_path, safe="/")
-    url = f"{R2_PUBLIC_BASE_URL}/{encoded_path}"
-    logger.debug(f"R2 upload complete: {url}")
-    return url
+    return destination_path
 
 def upload_image_to_bucket(image: np.ndarray, destination_path: str, image_format: str = ".jpg", content_type: str = "image/jpeg") -> str:
     encoded_bytes = encode_image(image, image_format)
@@ -79,3 +74,8 @@ def load_image(url: str) -> np.ndarray:
     response = requests.get(url)
     img = Image.open(BytesIO(response.content))
     return np.array(img)
+
+def get_url_from_key(key: str) -> str:
+    """Produce public URL for object with given key"""
+    encoded_key = quote(key, safe='/')
+    return f"{R2_PUBLIC_BASE_URL}/{encoded_key}"

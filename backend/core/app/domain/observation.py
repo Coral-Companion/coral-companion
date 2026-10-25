@@ -41,11 +41,16 @@ class Observation(SQLModel, table=True):
     coral_name: str
     dive_site: str
     image_path: str
+    original_image_key: str
+    
+    # TODO: check and remove the following 3. it is unused
     image_filename: str
     image_width: int
     image_height: int
+    
     cropped_image_path: str
-
+    cropped_image_key: str
+    
     created_at: datetime = Field(
         default_factory=datetime.now,
         nullable=False,

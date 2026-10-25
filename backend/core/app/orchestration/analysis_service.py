@@ -1,19 +1,14 @@
 from __future__ import annotations
 from uuid import UUID
 import logging
-from PIL import Image
 import base64
 import io
-import numpy as np
-import cv2
-from pathlib import Path
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
 
-from app.domain.observation_comparison import ObservationComparison
-from app.persistence.observation_repository import ObservationRepository, ObservationSummary
-from app.persistence.storage import load_image
+from app.persistence.observation_repository import ObservationRepository
+from app.persistence.storage import load_image, get_url_from_key
 
 from app.analysis.visualization import sobel, laplacian
 
@@ -34,8 +29,8 @@ class AnalysisService:
         
         images = {}
         if summary:
-            masked_image_url = summary.cropped_image_path
-            image = load_image(masked_image_url)
+            cropped_image_url = get_url_from_key(summary.cropped_image_key)
+            image = load_image(cropped_image_url)
             
             sobel_figure: Figure = sobel(image)
             sobel_base64 = self._convert_figure_base64(sobel_figure)

@@ -110,20 +110,17 @@ class CoralService:
         observation.dive_site = dive_site
         observation.embedding = identifyResult.embedding
 
-        directory_in_bucket = f"{dive_site}/{coral_name}"
-        image_path = upload_image_to_bucket(image, f"{directory_in_bucket}/{observation.created_at}")
-        observation.image_filename = str(observation.created_at)
+        path_to_coral_in_bucket = f"sites/{dive_site}/{coral_name}"
+        creation_timestamp = observation.created_at
+        original_image_key = upload_image_to_bucket(image, f"{path_to_coral_in_bucket}/original/{creation_timestamp}")
+        observation.image_filename = str(creation_timestamp)
         height, width = image.shape[:2]
         observation.image_height = height
         observation.image_width = width
-        observation.image_path = image_path
+        observation.original_image_key = original_image_key
         
-        observation.cropped_image_path = upload_image_to_bucket(
-            identifyResult.crop, f"{directory_in_bucket}/cropped_{observation.created_at}"
-        )
-        
-        upload_image_to_bucket(
-            identifyResult.masked_image, f"{directory_in_bucket}/masked_{observation.created_at}"
+        observation.cropped_image_key = upload_image_to_bucket(
+            identifyResult.crop, f"{path_to_coral_in_bucket}/cropped/{creation_timestamp}"
         )
 
         observation.monitoring_session_id = uuid.UUID(monitoring_session_id)
@@ -132,9 +129,6 @@ class CoralService:
         
         self.observation_repository.save(observation)
 
-        corrected_image = self.vision_service.apply_underwater_corrections(image)
-        upload_image_to_bucket(corrected_image, f"{directory_in_bucket}/color_corrected_{observation.created_at}")
-        
         result = ConfirmResult(observation)
         return result
 

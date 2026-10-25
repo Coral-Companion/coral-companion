@@ -9,6 +9,8 @@ from app.domain.models import Segment, BoundingBox, Point, ObservationCandidate
 from app.domain.monitoring_session import MonitoringSession
 from app.segmentation.models import SegmentationResult
 
+from app.persistence.storage import get_url_from_key
+
 class MonitoringSessionCreate(BaseModel):
     name: str
     timestamp: datetime
@@ -85,7 +87,7 @@ class ObservationCandidateResponse(BaseModel):
             monitoringSessionDate=candidate.observation.monitoring_session.timestamp,
             visualSimilarity=candidate.similarity,
             diveSite=candidate.observation.dive_site,
-            imageUrl=candidate.observation.cropped_image_path
+            imageUrl=get_url_from_key(candidate.observation.cropped_image_key)
         )
 
 class ImageUploadResponse(BaseModel):
