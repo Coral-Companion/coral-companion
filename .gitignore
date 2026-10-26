@@ -23,6 +23,8 @@ coralscop-env/
 *.png
 !test_resources/   # Allow tracking a specific small test folder if needed
 !**/dev_fixtures/**/*.jpg
+!frontend/public/*
+!frontend/src/assets/*
 
 # === Machine Learning / Cache Frameworks ===
 # Prevents large downloaded PyTorch model weight weights from syncing
