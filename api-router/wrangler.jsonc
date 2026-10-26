@@ -51,7 +51,7 @@
 	},
 	"vars": {
 		"BUCKET_NAME": "coral-companion-media",
-		"SEGMENTATION_PROVIDER": "fixture",
+		"SEGMENTATION_PROVIDER": "coralscop",
 		"R2_PUBLIC_BASE_URL": "https://media.coralcompanion.earth"
 	},
 	"secrets": {
