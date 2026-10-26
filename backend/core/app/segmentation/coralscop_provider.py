@@ -9,6 +9,7 @@ import logging
 import httpx
 from fastapi import HTTPException, status
 from pydantic import ValidationError
+import numpy as np
 
 SEGMENTATION_WORKER_URL = os.getenv("SEGMENTATION_WORKER_URL", "http://localhost:8001")
 MODAL_KEY = os.getenv("MODAL_KEY", "")
@@ -72,7 +73,7 @@ class CoralScopProvider(SegmentationProvider):
         
         if PRODUCE_FIXTURES:
             try:
-                export_segmentation_fixture(image, image_filename, result.segments)
+                export_segmentation_fixture(np.frombuffer(image), image_filename, result.segments)
             except Exception as e:
                 self.logger.exception(f"Segmentation failed writing fixture. {str(e)}")
                 # no need to raise, this is not critical
