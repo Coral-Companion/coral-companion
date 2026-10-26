@@ -50,7 +50,7 @@
 		}
 	},
 	"vars": {
-		"BUCKET_NAME": "coral-matcher-media",
+		"BUCKET_NAME": "coral-companion-media",
 		"SEGMENTATION_PROVIDER": "fixture",
 		"R2_PUBLIC_BASE_URL": "https://media.coralcompanion.earth"
 	},
