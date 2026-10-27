@@ -1,7 +1,9 @@
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, computed_field
 from sqlmodel import SQLModel
 from uuid import UUID
 from datetime import datetime
+
+from app.persistence.storage import get_url_from_key
 
 class MonitoringSessionResponse(SQLModel):
     model_config = ConfigDict(
@@ -48,6 +50,12 @@ class ObservationSummary(SQLModel):
         serialization_alias="observedAt"
     )
     
-    image_path: str = Field(
-        serialization_alias="imagePath"
+    image_key: str = Field(
+        serialization_alias="imageKey"
     )
+    
+    @computed_field(alias="imagePath")
+    @property
+    def image_path(self) -> str:
+        return get_url_from_key(self.image_key)
+    
