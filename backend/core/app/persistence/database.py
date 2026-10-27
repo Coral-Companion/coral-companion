@@ -1,6 +1,5 @@
 from sqlmodel import create_engine, Session
-from sqlmodel import SQLModel
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import make_url, Engine
 import os
 import psycopg
 
@@ -19,6 +18,7 @@ if DATABASE_URL.startswith("postgresql://"):
         "postgresql+psycopg://",
         1,
     )
+
 print("Database driver:", make_url(DATABASE_URL).drivername)
 engine = create_engine(
     DATABASE_URL,
@@ -26,5 +26,5 @@ engine = create_engine(
     module=psycopg
 )
 
-def get_session() -> Session:
-    return Session(engine)
+def get_engine() -> Engine:
+    return engine

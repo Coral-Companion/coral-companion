@@ -5,16 +5,16 @@ from app.domain.observation import Observation
 from app.domain.models import ObservationCandidate
 from app.api.models import ObservationSummary
 from app.domain.monitoring_session import MonitoringSession
-from .database import get_session
+from .database import get_engine
 
 class ObservationRepository:
 
     def save(self, observation: Observation) -> Observation:
-        session = get_session()
-        session.add(observation)
-        session.commit()
-        session.refresh(observation)
-        return observation
+        with Session(get_engine()) as session:
+            session.add(observation)
+            session.commit()
+            session.refresh(observation)
+            return observation
     
     def find_similar(self, embedding: list[float], limit: int = 10) -> list[ObservationCandidate]:
         distance = Observation.embedding.cosine_distance(embedding)
@@ -27,20 +27,20 @@ class ObservationRepository:
             .order_by(distance)
             .limit(limit)
         )
-        session: Session = get_session()
-        rows = session.exec(statement).all()        
-        return [
-            ObservationCandidate(
-                observation=observation,
-                distance=distance,
-                similarity=1-distance
-            )
-            for observation, distance in rows
-        ]
+        with Session(get_engine()) as session:
+            rows = session.exec(statement).all()        
+            return [
+                ObservationCandidate(
+                    observation=observation,
+                    distance=distance,
+                    similarity=1-distance
+                )
+                for observation, distance in rows
+            ]
 
-    def find_by_id(self, id: UUID) -> Observation:
-        session = get_session()
-        return session.get(Observation, id)
+    def find_by_id(self, id: UUID) -> Observation | None:
+        with Session(get_engine()) as session:
+            return session.get(Observation, id)
     
     def find_amount_per_session(self) -> dict[str, int]:
         statement = (
@@ -49,7 +49,8 @@ class ObservationRepository:
                 func.count(Observation.id)
             ).group_by(Observation.monitoring_session_id)
         )
-        observations_per_session = get_session().exec(statement).all()
+        with Session(get_engine()) as session:
+            observations_per_session = session.exec(statement).all()
         
         return {
             str(session_id): count
@@ -63,15 +64,16 @@ class ObservationRepository:
                 Observation.coral_name,
                 Observation.dive_site,
                 MonitoringSession.timestamp.label("observed_at"),
-                Observation.cropped_image_path.label("image_path"),
+                Observation.cropped_image_key.label("image_key"),
                 func.concat(MonitoringSession.timestamp, " ", MonitoringSession.name).label("monitoring_session_name"),
                 Observation.monitoring_session_id
             )
             .join(MonitoringSession)
             .order_by(Observation.coral_name)
         )
-        
-        rows = get_session().exec(statement).mappings().all()
+        with Session(get_engine()) as session:
+            rows = session.exec(statement).mappings().all()
+
         return [
             ObservationSummary.model_validate(row)
             for row in rows 
@@ -84,7 +86,7 @@ class ObservationRepository:
                 Observation.coral_name,
                 Observation.dive_site,
                 MonitoringSession.timestamp.label("observed_at"),
-                Observation.cropped_image_path.label("image_path"),
+                Observation.cropped_image_key.label("image_key"),
                 func.concat(MonitoringSession.timestamp, " ", MonitoringSession.name).label("monitoring_session_name"),
                 Observation.monitoring_session_id
             )
@@ -92,8 +94,9 @@ class ObservationRepository:
             .where(Observation.id.in_(ids))
             .order_by(Observation.coral_name)
         )
-
-        rows = get_session().exec(statement).mappings().all()
+        with Session(get_engine()) as session:
+            rows = session.exec(statement).mappings().all()
+        
         return [
             ObservationSummary.model_validate(row)
             for row in rows 
