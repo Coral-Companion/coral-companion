@@ -1,5 +1,3 @@
-import { DiveSite } from "./diveSite"
-
 export interface ObservationSummary {
 
     id: string;
@@ -14,5 +12,5 @@ export interface ObservationSummary {
     observedAt: string;
 
     imagePath: string;
-
+        
 }
