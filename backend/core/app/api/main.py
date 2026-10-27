@@ -151,8 +151,6 @@ async def get_monitoring_sessions():
 
 @app.get("/api/observation-summaries", response_model=List[ObservationSummary])
 async def get_observation_summaries():
-    # If ObservationSummary is already a Pydantic model (based on your snippet `model_dump()`),
-    # FastAPI will serialize it automatically.
     return observation_repository.find_all_summaries()
 
 
