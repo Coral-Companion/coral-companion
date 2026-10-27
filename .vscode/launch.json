@@ -1,0 +1,22 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Backend Core",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/backend/core",
+            "args": [
+                "app.api.main:app",
+                "--reload",
+                "--port",
+                "8000",
+                "--log-level",
+                "debug"
+            ],
+            "jinja": true,
+            "justMyCode": true
+        }
+    ]
+}
