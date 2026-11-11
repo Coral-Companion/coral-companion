@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
         logger.info("Segmentation worker cleanup completed")
 
 app = FastAPI(
-    title="Coral Monitoring ML Worker",
+    title="Coral Segmentation Worker",
     lifespan=lifespan,
 )
 
