@@ -100,7 +100,7 @@ class CoralService:
             segments: list[Segment],
             dive_site: str,
             coral_name: str,
-            monitoring_session_id: str
+            survey_id: str
         ) -> ConfirmResult:
         
         identifyResult = self.identify(image, segments)
@@ -123,7 +123,7 @@ class CoralService:
             identifyResult.crop, f"{path_to_coral_in_bucket}/cropped/{creation_timestamp}"
         )
 
-        observation.monitoring_session_id = uuid.UUID(monitoring_session_id)
+        observation.survey_id = uuid.UUID(survey_id)
 
         observation.segments = self.prepare_segments_for_db(segments)
         

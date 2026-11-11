@@ -1,22 +1,22 @@
-import { MonitoringSession } from "../types/monitoringSession";
+import { Survey } from "../types/survey";
 import { defineStore } from "pinia";
 
 export interface CoralData {
-    selectedMonitoringSession: MonitoringSession
+    selectedSurvey: Survey
 }
 
 export const useCoralDataStore =
     defineStore("coralData", {
         state: () => ({
-            selectedMonitoringSession : {} as MonitoringSession,
+            selectedSurvey : {} as Survey,
         }),
 
         actions: {
-            selectMonitoringSession(newSelected: MonitoringSession) {
-                this.selectedMonitoringSession = newSelected;
+            selectSurvey(newSelected: Survey) {
+                this.selectedSurvey = newSelected;
             },
-            getSelectedMonitoringSessionId(): string {
-                return this.selectedMonitoringSession.id;
+            getSelectedSurveyId(): string {
+                return this.selectedSurvey.id;
             },
         },
     });

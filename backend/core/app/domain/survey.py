@@ -5,8 +5,8 @@ from sqlmodel import Field, SQLModel
 from pydantic import PrivateAttr
 
 
-class MonitoringSession(SQLModel, table=True):
-    __tablename__ = "monitoring_sessions"
+class Survey(SQLModel, table=True):
+    __tablename__ = "surveys"
 
     id: uuid.UUID = Field(
         default_factory=uuid.uuid4,

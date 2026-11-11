@@ -24,7 +24,7 @@ class ConfirmRequest:
     selected_segments: list[Segment]
     dive_site: str
     coral_name: str
-    monitoring_session_id: str
+    survey_id: str
     
 @dataclass(slots=True)
 class ConfirmResult:

@@ -1,7 +1,7 @@
-from app.domain.monitoring_session import MonitoringSession
+from app.domain.survey import Survey
 from app.domain.observation import Observation
 
 __all__ = [
-    "MonitoringSession",
+    "Survey",
     "Observation",
 ]

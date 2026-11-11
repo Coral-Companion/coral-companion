@@ -4,8 +4,8 @@ export interface ObservationSummary {
 
     coralName: string;
 
-    monitoringSessionSummary: string;
-    monitoringSessionId: string;
+    surveySummary: string;
+    surveyId: string;
 
     diveSite: string;
 

@@ -21,8 +21,8 @@ import Workspace from "../components/monitoring/Workspace.vue";
 import observationService from "../services/observationService";
 import { ObservationSummary } from "@/types/observationSummary"
 import { useNotificationStore } from "@/stores/notification";
-import { MonitoringSession } from "@/types/monitoringSession";
-import monitoringSessionService from "@/services/monitoringSessionService.js";
+import { Survey } from "@/types/survey";
+import surveyService from "@/services/surveyService.js";
 
 
 const notificationStore = useNotificationStore();

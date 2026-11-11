@@ -97,10 +97,10 @@
         <div class="flex min-h-0 flex-col">
       -->
       <div class="shrink-0 h-full flex flex-col min-h-0">
-        <MonitoringSessionSelector v-model="selectedMonitoringSession" class="mb-2" />
+        <SurveySelector v-model="selectedSurvey" class="mb-2" />
         <CandidatesPanel :image-url="imageUrl" :candidates="candidates" :selected-count="selected.size"
           :loading-segment="loading.segment" :loading-identify="loading.identify" :loading-confirm="loading.confirm"
-          @confirm="confirm" :selected-monitoring-session="selectedMonitoringSession" />
+          @confirm="confirm" :selected-survey="selectedSurvey" />
       </div>
     </div>
   </main>
@@ -117,14 +117,14 @@ import { useCoralDataStore } from "../stores/coral";
 
 import CoralImageViewer from "../components/observation/CoralImageViewer.vue";
 import CandidatesPanel from "../components/observation/CandidatesPanel.vue";
-import MonitoringSessionSelector from "../components/observation/MonitoringSessionSelector.vue";
+import SurveySelector from "../components/observation/SurveySelector.vue";
 
 import segmentation from "../services/segmentationService";
 import observationService from "../services/observationService";
 
 import type { Segment } from "../types/segment";
 import type { CoralCandidate } from "../types/api";
-import type { MonitoringSession } from "../types/monitoringSession.js";
+import type { Survey } from "../types/survey.js";
 
 const picker = ref<HTMLInputElement>();
 
@@ -148,7 +148,7 @@ const loading = reactive({
   confirm: false,
 });
 
-const selectedMonitoringSession = ref<MonitoringSession | null>(null);
+const selectedSurvey = ref<Survey | null>(null);
 const notificationStore = useNotificationStore();
 const coralDataStore = useCoralDataStore();
 
@@ -280,7 +280,7 @@ const confirm = async (payload: ConfirmPayload) => {
       selectedCandidateId: payload.selectedCandidateId,
       diveSite: payload.diveSite,
       coralName: payload.coralName,
-      monitoringSessionId: coralDataStore.getSelectedMonitoringSessionId(),
+      surveyId: coralDataStore.getSelectedSurveyId(),
     });
 
     notificationStore.success(`Observation for ${payload.coralName} has been successfully saved`);

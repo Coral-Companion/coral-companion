@@ -8,7 +8,7 @@
             @click="toggleDropdown">
             <div class="grid grid-cols-[3fr_1fr] w-full text-xs text-coral-primary-text font-semibold m-1">
                 <span v-if="selectedSession">
-                    <span class="text-coral-secondary-text font-normal">Monitoring Session </span>
+                    <span class="text-coral-secondary-text font-normal">Survey </span>
                         <Date :timestamp="selectedSession.timestamp" /> · {{ selectedSession.diveSite }}
                     <span v-if="selectedSession.name"> · {{ selectedSession.name }}</span>
                 </span>
@@ -26,8 +26,8 @@
                 <p v-else class="text-xs text-coral-secondary-text">
                     {{
                         loading
-                            ? "Loading monitoring sessions..."
-                            : "Select a monitoring session"
+                            ? "Loading Surveys..."
+                            : "Select a Survey"
                     }}
                 </p>
             </div>
@@ -60,7 +60,7 @@
                         " @click="selectSession(session)">
                     <div class="grid grid-cols-[3fr_1fr] w-full text-xs text-coral-primary-text font-semibold m-1">
                         <span v-if="selectedSession">
-                            <span class="text-coral-secondary-text font-normal">Monitoring Session </span>
+                            <span class="text-coral-secondary-text font-normal">Survey </span>
                             <Date :timestamp="session.timestamp" /> · {{ session.diveSite }}
                             <span v-if="session.name"> · {{ session.name }}</span>
                         </span>
@@ -79,18 +79,18 @@
 
             <!-- Empty state -->
             <p v-else class="px-3 py-4 text-center text-xs text-coral-secondary-text">
-                No monitoring sessions yet.
+                No Surveys yet.
             </p>
 
             <!-- Create new session -->
             <button type="button" class="w-full border-coral-raised-border px-3 py-3 text-left text-xs font-medium text-teal-300 transition
                 bg-coral-raised hover:bg-coral-primary-bg" @click="openCreateDialog">
-                ＋ Create new monitoring session
+                ＋ Create new Survey
             </button>
         </div>
 
         <!-- Create dialog -->
-        <CreateMonitoringSessionDialog v-if="showCreateDialog" :dive-sites="diveSites" :initial-dive-site-id="selectedSession?.diveSite
+        <CreateSurveyDialog v-if="showCreateDialog" :dive-sites="diveSites" :initial-dive-site-id="selectedSession?.diveSite
             " @cancel="showCreateDialog = false" @create="createSession" />
     </div>
 </template>
@@ -104,9 +104,9 @@ import {
 } from "vue";
 
 
-import monitoringSessionService from "../../services/monitoringSessionService";
-import { MonitoringSession } from "../../types/monitoringSession"
-import CreateMonitoringSessionDialog from "./CreateMonitoringSessionDialog.vue";
+import surveyService from "../../services/surveyService";
+import { Survey } from "../../types/survey"
+import CreateSurveyDialog from "./CreateSurveyDialog.vue";
 import diveSiteService from "../../services/diveSiteService"
 import { useNotificationStore } from "../../stores/notification";
 import { useCoralDataStore } from "../../stores/coral";
@@ -114,14 +114,14 @@ import Date from "../utils/Date.vue";
 import { format } from "date-fns";
 
 type Props = {
-    modelValue: MonitoringSession | null;
+    modelValue: Survey | null;
 };
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
     "update:modelValue": [
-        session: MonitoringSession | null,
+        session: Survey | null,
     ];
 }>();
 
@@ -132,7 +132,7 @@ const open = ref(false);
 const loading = ref(false);
 const error = ref("");
 const showCreateDialog = ref(false);
-const sessions = ref<MonitoringSession[]>([]);
+const sessions = ref<Survey[]>([]);
 const diveSites = ref<string[]>([]);
 const selectedSession = computed(() => props.modelValue);
 const notificationStore = useNotificationStore();
@@ -145,9 +145,9 @@ const toggleDropdown = () => {
     open.value = !open.value;
 };
 
-const selectSession = (session: MonitoringSession) => {
+const selectSession = (session: Survey) => {
     emit("update:modelValue", session);
-    coralDataStore.selectMonitoringSession(session);
+    coralDataStore.selectSurvey(session);
     open.value = false;
 };
 
@@ -161,7 +161,7 @@ const loadSessions = async () => {
     error.value = "";
 
     try {
-        sessions.value = await monitoringSessionService.getAll();
+        sessions.value = await surveyService.getAll();
         if (sessions.value.length > 0) {
             selectSession(sessions.value[0]);
         }
@@ -169,7 +169,7 @@ const loadSessions = async () => {
         if (e instanceof Error) {
             notificationStore.error(e.message);
         } else {
-            notificationStore.error("Could not load monitoring sessions.");
+            notificationStore.error("Could not load Surveys.");
         }
     } finally {
         loading.value = false;
@@ -193,22 +193,22 @@ const loadDiveSites = async () => {
     }
 };
 
-const createSession = async (payload: MonitoringSession) => {
+const createSession = async (payload: Survey) => {
     loading.value = true;
     error.value = "";
 
     try {
-        const created = await monitoringSessionService.create(payload);
+        const created = await surveyService.create(payload);
         showCreateDialog.value = false;
 
         // Automatically select the newly-created session.
         emit("update:modelValue", created);
-        coralDataStore.selectMonitoringSession(created);
+        coralDataStore.selectSurvey(created);
     } catch (e) {
         error.value =
             e instanceof Error
                 ? e.message
-                : "Could not create monitoring session.";
+                : "Could not create Survey.";
     } finally {
         loading.value = false;
     }

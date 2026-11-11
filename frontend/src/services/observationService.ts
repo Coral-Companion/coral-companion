@@ -20,7 +20,7 @@ interface ConfirmCoralRequest {
   selectedCandidateId: string | null
   diveSite: string
   coralName: string
-  monitoringSessionId: string
+  surveyId: string
 }
 
 async function confirmCoral(request: ConfirmCoralRequest): Promise<void> {
@@ -31,7 +31,7 @@ async function confirmCoral(request: ConfirmCoralRequest): Promise<void> {
   form.append('selectedCandidateId', request.selectedCandidateId ?? '')
   form.append('diveSite', request.diveSite)
   form.append('coralName', request.coralName)
-  form.append('monitoringSessionId', request.monitoringSessionId)
+  form.append('surveyId', request.surveyId)
   const res = await fetch(url, { method: 'POST', body: form })
   if (!res.ok) throw new Error('Confirmation request failed.')
   return res.json()

@@ -16,7 +16,7 @@ export interface CoralCandidate {
   id: string
   coralId: string
   coralName: string
-  monitoringSessionDate: string
+  surveyDate: string
   visualSimilarity: number
   diveSite: string
   // backend returns the cropped image to save a bit of bandwith 

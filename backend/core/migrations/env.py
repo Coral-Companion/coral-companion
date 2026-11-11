@@ -11,7 +11,7 @@ from sqlmodel import SQLModel
 from app.persistence.database import DATABASE_URL
 
 
-from app.domain.monitoring_session import MonitoringSession
+from app.domain.survey import Survey
 from app.domain.observation import Observation
 
 # this is the Alembic Config object, which provides

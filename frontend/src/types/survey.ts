@@ -1,6 +1,6 @@
 import { DiveSite } from "./diveSite";
 
-export type MonitoringSession = {
+export type Survey = {
     id: string;
     name: string | null;
     diveSite: string;

@@ -5,7 +5,7 @@
             <div class="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                 <div>
                     <h2 class="text-base font-semibold text-coral-primary-text">
-                        New monitoring session
+                        New Survey
                     </h2>
 
                     <p class="mt-1 text-xs text-coral-secondary-text">
@@ -75,7 +75,7 @@
                         <button type="submit"
                             class="rounded bg-coral-primary px-4 py-2 text-sm font-semibold text-[#062126] disabled:opacity-40"
                             :disabled="loading || !diveSite">
-                            {{ loading ? "Creating..." : "Create session" }}
+                            {{ loading ? "Creating..." : "Create survey" }}
                         </button>
                     </div>
             </form>
@@ -85,7 +85,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { MonitoringSession } from "../../types/monitoringSession";
+import { Survey } from "../../types/survey";
 
 type Props = {
     diveSites: string[];
@@ -103,7 +103,7 @@ const emit = defineEmits<{
     cancel: [];
 
     create: [
-        payload: MonitoringSession,
+        payload: Survey,
     ];
 }>();
 

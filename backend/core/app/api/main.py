@@ -15,7 +15,7 @@ load_dotenv()
 from app.orchestration.coral_service import CoralService
 from app.orchestration.comparison_service import ComparisonService
 from app.persistence.storage import decode_image_bytes
-from app.persistence.monitoring_session_repository import MonitoringSessionRepository
+from app.persistence.survey_repository import SurveyRepository
 from app.persistence.observation_repository import ObservationRepository
 from app.orchestration.analysis_service import AnalysisService
 
@@ -23,13 +23,13 @@ from app.api.schemas import (
     ImageUploadResponse,
     IdentifyResponse,
     ConfirmCoralResponse,
-    CreateMonitoringSessionResponse,
-    MonitoringSessionCreate,
+    CreateSurveyResponse,
+    SurveyCreate,
     ObservationComparisonRequest,
     ObservationCandidateResponse,
     parse_segments_form_data
 )
-from app.api.models import MonitoringSessionResponse, ObservationSummary
+from app.api.models import SurveyResponse, ObservationSummary
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,7 +41,7 @@ logger = logging.getLogger("uvicorn.error")
 
 coral_service = CoralService()
 comparison_service = ComparisonService()
-monitoring_session_repository = MonitoringSessionRepository()
+survey_repository = SurveyRepository()
 observation_repository = ObservationRepository()
 analysis_service = AnalysisService()
 
@@ -109,7 +109,7 @@ async def confirm_coral(
     segments: str = Form(...),
     diveSite: str = Form(...),
     coralName: str = Form(...),
-    monitoringSessionId: UUID = Form(...)
+    surveyId: UUID = Form(...)
 ):
     image_bytes = await image.read()
     img_array = decode_image_bytes(image_bytes)
@@ -120,25 +120,25 @@ async def confirm_coral(
         parsed_segments,
         diveSite,
         coralName,
-        str(monitoringSessionId)
+        str(surveyId)
     ).observation
     
     return ConfirmCoralResponse(observationId=observation.id)
 
 
-@app.post("/api/monitoring-sessions", response_model=CreateMonitoringSessionResponse)
-async def create_monitoring_session(payload: MonitoringSessionCreate):
-    session = monitoring_session_repository.save(payload.to_domain())
-    return CreateMonitoringSessionResponse(monitoringSessionId=session.id)
+@app.post("/api/surveys", response_model=CreateSurveyResponse)
+async def create_survey(payload: SurveyCreate):
+    session = survey_repository.save(payload.to_domain())
+    return CreateSurveyResponse(surveyId=session.id)
 
 
-@app.get("/api/monitoring-sessions", response_model=List[MonitoringSessionResponse])
-async def get_monitoring_sessions():
-    sessions = monitoring_session_repository.find_all()
+@app.get("/api/surveys", response_model=List[SurveyResponse])
+async def get_surveys():
+    sessions = survey_repository.find_all()
     observation_counts = observation_repository.find_amount_per_session()
     
     return [
-        MonitoringSessionResponse(
+        SurveyResponse(
             id=session.id,
             name=session.name,
             timestamp=session.timestamp,

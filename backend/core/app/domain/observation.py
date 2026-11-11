@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel, Relationship
 
 from app.embedding.embedding import EMBEDDING_DIMENSION
-from app.domain.monitoring_session import MonitoringSession
+from app.domain.survey import Survey
 
 
 class Observation(SQLModel, table=True):
@@ -28,12 +28,12 @@ class Observation(SQLModel, table=True):
         sa_column=Column(Vector(EMBEDDING_DIMENSION), nullable=False),
     )
 
-    monitoring_session_id: uuid.UUID = Field(
-        foreign_key="monitoring_sessions.id",
+    survey_id: uuid.UUID = Field(
+        foreign_key="surveys.id",
         nullable=False,
     )
     
-    monitoring_session: MonitoringSession = Relationship(
+    survey: Survey = Relationship(
         sa_relationship_kwargs={
             "lazy": "joined",
     })

@@ -16,7 +16,7 @@ A typical workflow is:
 1. Practitioner uploads one or many coral photograph(s)
 1. Coral Companion detects and segments coral colonies
 1. Practitioner reviews the detected segments and assigns the relevant colony to previous observations (or to a new coral colony)
-1. Practitioner can review the colony's history across monitoring sessions and compare observations over time to help understand changes in the colony
+1. Practitioner can review the colony's history across surveys and compare observations over time to help understand changes in the colony
 
 
 ## Roadmap

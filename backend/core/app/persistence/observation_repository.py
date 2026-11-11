@@ -4,7 +4,7 @@ from uuid import UUID
 from app.domain.observation import Observation
 from app.domain.models import ObservationCandidate
 from app.api.models import ObservationSummary
-from app.domain.monitoring_session import MonitoringSession
+from app.domain.survey import Survey
 from .database import get_engine
 
 class ObservationRepository:
@@ -45,9 +45,9 @@ class ObservationRepository:
     def find_amount_per_session(self) -> dict[str, int]:
         statement = (
             select(
-                Observation.monitoring_session_id,
+                Observation.survey_id,
                 func.count(Observation.id)
-            ).group_by(Observation.monitoring_session_id)
+            ).group_by(Observation.survey_id)
         )
         with Session(get_engine()) as session:
             observations_per_session = session.exec(statement).all()
@@ -63,12 +63,12 @@ class ObservationRepository:
                 Observation.id,
                 Observation.coral_name,
                 Observation.dive_site,
-                MonitoringSession.timestamp.label("observed_at"),
+                Survey.timestamp.label("observed_at"),
                 Observation.cropped_image_key.label("image_key"),
-                func.concat(MonitoringSession.timestamp, " ", MonitoringSession.name).label("monitoring_session_name"),
-                Observation.monitoring_session_id
+                func.concat(Survey.timestamp, " ", Survey.name).label("survey_name"),
+                Observation.survey_id
             )
-            .join(MonitoringSession)
+            .join(Survey)
             .order_by(Observation.coral_name)
         )
         with Session(get_engine()) as session:
@@ -85,12 +85,12 @@ class ObservationRepository:
                 Observation.id,
                 Observation.coral_name,
                 Observation.dive_site,
-                MonitoringSession.timestamp.label("observed_at"),
+                Survey.timestamp.label("observed_at"),
                 Observation.cropped_image_key.label("image_key"),
-                func.concat(MonitoringSession.timestamp, " ", MonitoringSession.name).label("monitoring_session_name"),
-                Observation.monitoring_session_id
+                func.concat(Survey.timestamp, " ", Survey.name).label("survey_name"),
+                Observation.survey_id
             )
-            .join(MonitoringSession)
+            .join(Survey)
             .where(Observation.id.in_(ids))
             .order_by(Observation.coral_name)
         )

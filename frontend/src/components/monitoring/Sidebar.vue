@@ -21,8 +21,8 @@
 
                 <select v-model="selectedSessionId"
                     class="w-full mb-2 rounded border border-coral-surface-border bg-coral-bg p-2 text-xs accent-coral-primary">
-                    <option value="All Monitoring Sessions">All Monitoring Sessions</option>
-                    <option v-for="session in monitoringSessions" :value="session.id">
+                    <option value="All Surveys">All Surveys</option>
+                    <option v-for="session in surveys" :value="session.id">
                         <Date :timestamp="session.timestamp" /> · {{ session.diveSite }}
                     </option>
                 </select>
@@ -78,8 +78,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { ObservationSummary } from '../../types/observationSummary';
-import { MonitoringSession } from "@/types/monitoringSession";
-import monitoringSessionService from "@/services/monitoringSessionService.js";
+import { Survey } from "@/types/survey";
+import surveyService from "@/services/surveyService.js";
 import { useNotificationStore } from '@/stores/notification';
 import diveSiteService from '@/services/diveSiteService';
 import { compareDesc, format } from 'date-fns';
@@ -106,9 +106,9 @@ const diveSites = ref<string[]>([]);
 const loadingDiveSites = ref<boolean>(false);
 const selectedDiveSite = ref<string>("All Dive Sites");
 
-const monitoringSessions = ref<MonitoringSession[]>([]);
+const surveys = ref<Survey[]>([]);
 const loadingSessions = ref<boolean>(false);
-const selectedSessionId = ref<string>("All Monitoring Sessions");
+const selectedSessionId = ref<string>("All Surveys");
 
 const filteredObservations = computed<ObservationSummary[]>(() => {
     return props.observations
@@ -116,8 +116,8 @@ const filteredObservations = computed<ObservationSummary[]>(() => {
             summary.diveSite.toLowerCase() == selectedDiveSite.value?.toLowerCase()
             || selectedDiveSite.value == "All Dive Sites"
         ).filter(summary =>
-            summary.monitoringSessionId == selectedSessionId.value
-            || selectedSessionId.value == "All Monitoring Sessions"
+            summary.surveyId == selectedSessionId.value
+            || selectedSessionId.value == "All Surveys"
         ).filter(summary =>
             summary.coralName.toLocaleLowerCase().includes(coralNameSearchTerm.value ? coralNameSearchTerm.value.toLowerCase() : "")
         ).sort((a, b) => {
@@ -152,18 +152,18 @@ const loadDiveSites = async () => {
     loadingDiveSites.value = false;
 };
 
-const loadMonitoringSessions = async () => {
+const loadSurveys = async () => {
     loadingSessions.value = true;
     try {
-        monitoringSessions.value = await monitoringSessionService.getAll();
+        surveys.value = await surveyService.getAll();
     } catch (e) {
-        notificationStore.error("An error occurred while loading monitoring sessions: " + e);
+        notificationStore.error("An error occurred while loading surveys: " + e);
     }
     loadingSessions.value = false;
 };
 
 onMounted(async () => {
-    await loadMonitoringSessions();
+    await loadSurveys();
     await loadDiveSites();
 });
 

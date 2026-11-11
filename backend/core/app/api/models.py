@@ -5,7 +5,7 @@ from datetime import datetime
 
 from app.persistence.storage import get_url_from_key
 
-class MonitoringSessionResponse(SQLModel):
+class SurveyResponse(SQLModel):
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
@@ -35,11 +35,11 @@ class ObservationSummary(SQLModel):
     coral_name: str = Field(
         serialization_alias="coralName")
     
-    monitoring_session_name: str = Field(
-        serialization_alias="monitoringSessionSummary")
+    survey_name: str = Field(
+        serialization_alias="surveySummary")
     
-    monitoring_session_id: UUID = Field(
-        serialization_alias="monitoringSessionId"
+    survey_id: UUID = Field(
+        serialization_alias="surveyId"
     )
     
     dive_site: str = Field(

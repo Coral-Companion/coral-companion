@@ -89,7 +89,7 @@
                             </p>
 
                             <p class="text-coral-secondary-text">
-                                <Date :timestamp="candidate.monitoringSessionDate" />
+                                <Date :timestamp="candidate.surveyDate" />
                             </p>
                         </div>
                     </div>
@@ -103,7 +103,7 @@
 import { computed, ref } from "vue";
 import { useNotificationStore } from "../../stores/notification";
 import type { CoralCandidate, CoralObservations} from "../../types/api";
-import { MonitoringSession } from "../../types/monitoringSession";
+import { Survey } from "../../types/survey";
 import { format } from "date-fns";
 import Spinner from "../utils/Spinner.vue";
 import Date from "../utils/Date.vue";
@@ -115,7 +115,7 @@ type Props = {
     loadingSegment: boolean;
     loadingIdentify: boolean;
     loadingConfirm: boolean;
-    selectedMonitoringSession: MonitoringSession | null;
+    selectedSurvey: Survey | null;
 };
 
 const props = defineProps<Props>();
@@ -166,7 +166,7 @@ const confirm = () => {
     }
     emit("confirm", {
         selectedCandidateId: activeId.value || null,
-        diveSite: props.selectedMonitoringSession.diveSite,
+        diveSite: props.selectedSurvey.diveSite,
         coralName: name.value,
     });
     activeId.value = '';

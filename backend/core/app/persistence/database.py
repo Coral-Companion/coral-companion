@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Imports necessary for sqlmodel
-from app.domain.monitoring_session import MonitoringSession
+from app.domain.survey import Survey
 from app.domain.observation import Observation
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")

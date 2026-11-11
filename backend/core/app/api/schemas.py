@@ -6,18 +6,18 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.domain.models import Segment, BoundingBox, Point, ObservationCandidate
-from app.domain.monitoring_session import MonitoringSession
+from app.domain.survey import Survey
 from app.segmentation.models import SegmentationResult
 
 from app.persistence.storage import get_url_from_key
 
-class MonitoringSessionCreate(BaseModel):
+class SurveyCreate(BaseModel):
     name: str
     timestamp: datetime
     diveSite: str
 
-    def to_domain(self) -> MonitoringSession:
-        return MonitoringSession(
+    def to_domain(self) -> Survey:
+        return Survey(
             name=self.name,
             timestamp=self.timestamp,
             dive_site=self.diveSite
@@ -73,7 +73,7 @@ class ObservationCandidateResponse(BaseModel):
     id: UUID
     coralId: UUID
     coralName: str
-    monitoringSessionDate: datetime
+    surveyDate: datetime
     visualSimilarity: float
     diveSite: str
     imageUrl: str
@@ -84,7 +84,7 @@ class ObservationCandidateResponse(BaseModel):
             id=candidate.observation.id,
             coralId=candidate.observation.id,
             coralName=candidate.observation.coral_name,
-            monitoringSessionDate=candidate.observation.monitoring_session.timestamp,
+            surveyDate=candidate.observation.survey.timestamp,
             visualSimilarity=candidate.similarity,
             diveSite=candidate.observation.dive_site,
             imageUrl=get_url_from_key(candidate.observation.cropped_image_key)
@@ -123,5 +123,5 @@ class IdentifyResponse(BaseModel):
 class ConfirmCoralResponse(BaseModel):
     observationId: UUID
 
-class CreateMonitoringSessionResponse(BaseModel):
-    monitoringSessionId: UUID
+class CreateSurveyResponse(BaseModel):
+    surveyId: UUID
