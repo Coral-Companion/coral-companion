@@ -52,6 +52,8 @@ npm run build
 cd api-router && npm ci && npx wrangler dev
 ```
 
+Recommended tool: the [GitHub CLI](https://cli.github.com) (`gh`) for PRs, issues and checking workflow runs (`gh pr create`, `gh run list`). Run `gh auth login` once.
+
 There is no linter/formatter config committed yet (planned: ruff). Until then, match the surrounding style; VS Code is set up to format Python with ruff and organize imports on save.
 
 ## Before you call a change done
