@@ -72,6 +72,16 @@ There is no linter/formatter config committed yet (planned: ruff). Until then, m
 - No local DB/storage is provided: the backend needs a Supabase Postgres (`DATABASE_URL`) and R2 bucket. Don't run migrations or scripts against a database without being asked.
 - Segmentation needs a GPU. For local work without one, use `SEGMENTATION_PROVIDER=fixture` (serves pre-segmented results from `dev_fixtures/`).
 
+## Work tracking (Jira)
+
+Work is tracked in Jira Cloud, project **`COCO`**: https://coral-companion.atlassian.net/jira/software/projects/COCO
+
+- Branch names start with the issue key: `COCO-42-short-description`.
+- Commit messages and PR titles include the key after the gitmoji: `✨ COCO-42 add colony growth chart`. This links them to the issue via Jira's GitHub integration.
+- When given an issue key, read the issue (description, acceptance criteria, comments) before starting.
+- Only change an issue's status, assignee or fields, or post comments, when explicitly asked.
+- Jira access for agents is via the Atlassian MCP server (`https://mcp.atlassian.com/v1/mcp`), configured in `.mcp.json` (Claude Code) and `.vscode/mcp.json` (VS Code). Each developer authenticates with their own Atlassian account (OAuth) on first use; no tokens go in the repo.
+
 ## Conventions
 
 - Commit messages: short, imperative, lowercase, optionally prefixed with a [gitmoji](https://gitmoji.dev) (`✨` feature, `🐛` fix, `🧹` cleanup, `🚚` move/rename, `🖊️` docs, `🚀` deploy).
