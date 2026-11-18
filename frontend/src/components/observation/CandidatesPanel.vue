@@ -30,7 +30,7 @@
                 </button>
             </div>
 
-            <button v-if="active" class="mt-2 text-xs text-teal-300" @click="deselectCandidate">
+            <button v-if="active" class="mt-2 text-xs text-teal-300" @click="clickDeselectCandidate">
                 Deselect Candidate
             </button>
         </div>
@@ -146,10 +146,12 @@ const active = computed(() =>
 
 const selectCandidate = (coralName: string) => {
     if (activeId.value === coralName) {
+        window.umami.track("candidate-deselect-candidate-click");
         deselectCandidate();
         return;
     }
-
+    
+    window.umami.track("candidate-select");
     activeId.value = coralName;
     name.value = coralName;
 };
@@ -157,6 +159,11 @@ const selectCandidate = (coralName: string) => {
 const deselectCandidate = () => {
     activeId.value = "";
     name.value = "";
+};
+
+const clickDeselectCandidate = () => {
+    window.umami.track("candidate-deselect-link-click");
+    deselectCandidate();
 };
 
 const confirm = () => {

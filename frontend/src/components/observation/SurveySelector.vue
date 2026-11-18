@@ -9,7 +9,7 @@
             <div class="grid grid-cols-[3fr_1fr] w-full text-xs text-coral-primary-text font-semibold m-1">
                 <span v-if="selectedSession">
                     <span class="text-coral-secondary-text font-normal">Survey </span>
-                        <Date :timestamp="selectedSession.timestamp" /> · {{ selectedSession.diveSite }}
+                    <Date :timestamp="selectedSession.timestamp" /> · {{ selectedSession.diveSite }}
                     <span v-if="selectedSession.name"> · {{ selectedSession.name }}</span>
                 </span>
 
@@ -57,7 +57,7 @@
                     hover:bg-coral-primary-bg" :class="session.id === selectedSession?.id
                         ? 'bg-coral-primary-bg'
                         : 'bg-coral-raised'
-                        " @click="selectSession(session)">
+                        " @click="clickSurvey(session)">
                     <div class="grid grid-cols-[3fr_1fr] w-full text-xs text-coral-primary-text font-semibold m-1">
                         <span v-if="selectedSession">
                             <span class="text-coral-secondary-text font-normal">Survey </span>
@@ -145,7 +145,12 @@ const toggleDropdown = () => {
     open.value = !open.value;
 };
 
-const selectSession = (session: Survey) => {
+const clickSurvey = (session: Survey) => {
+    selectSurvey(session);
+    window.umami.track("survey-select", { "survey": session });
+};
+
+const selectSurvey = (session: Survey) => {
     emit("update:modelValue", session);
     coralDataStore.selectSurvey(session);
     open.value = false;
@@ -154,6 +159,7 @@ const selectSession = (session: Survey) => {
 const openCreateDialog = () => {
     open.value = false;
     showCreateDialog.value = true;
+    window.umami.track("survey-creation-dialog-open");
 };
 
 const loadSessions = async () => {
@@ -163,7 +169,7 @@ const loadSessions = async () => {
     try {
         sessions.value = await surveyService.getAll();
         if (sessions.value.length > 0) {
-            selectSession(sessions.value[0]);
+            selectSurvey(sessions.value[0]);
         }
     } catch (e) {
         if (e instanceof Error) {
@@ -199,16 +205,15 @@ const createSession = async (payload: Survey) => {
 
     try {
         const created = await surveyService.create(payload);
+        window.umami.track("survey-create", { "survey": payload });
         showCreateDialog.value = false;
 
         // Automatically select the newly-created session.
         emit("update:modelValue", created);
         coralDataStore.selectSurvey(created);
     } catch (e) {
-        error.value =
-            e instanceof Error
-                ? e.message
-                : "Could not create Survey.";
+        error.value = e instanceof Error ? e.message : "Could not create Survey.";
+        window.umami.captureException(e);
     } finally {
         loading.value = false;
     }

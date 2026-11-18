@@ -26,9 +26,8 @@
                 </b>
               </span>
             </label>
-            <input :disabled="loading.segment || loading.identify || segments?.length == 0"
-                  v-model.number="opacity" type="range" min="0" max="1" step=".05"
-                  class="w-20 accent-coral-primary disabled:opacity-40" />
+            <input :disabled="loading.segment || loading.identify || segments?.length == 0" v-model.number="opacity"
+              type="range" min="0" max="1" step=".05" class="w-20 accent-coral-primary disabled:opacity-40" />
           </div>
 
           <div class="flex flex-col items-center ml-auto gap-3">
@@ -155,9 +154,13 @@ const coralDataStore = useCoralDataStore();
 const toggle = (id: number) => {
   const next = new Set(selected.value);
 
-  next.has(id)
-    ? next.delete(id)
-    : next.add(id);
+  if (next.has(id)) {
+    next.delete(id)
+    window.umami.track("image-segment-deselect", { "selectedSegments" : selected.value, "deselectedSegment": id });
+  } else {
+    next.add(id);
+    window.umami.track("image-segment-select", { "selectedSegments" : selected.value, "selectedSegment": id });
+  }
 
   selected.value = next;
 };
@@ -191,32 +194,27 @@ const upload = async (
 
     notificationStore.success("Segments Calculated");
   } catch (e) {
-    notificationStore.error(e instanceof Error ? e.message : "Segmentation failed."
-    );
+    notificationStore.error(e instanceof Error ? e.message : "Segmentation failed.");
+    window.umami.captureException(e);
   } finally {
     loading.segment = false;
   }
 };
 
-const picked = (
-  e: Event,
-) => {
-  const file =
-    (e.target as HTMLInputElement)
-      .files?.[0];
+const picked = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
 
   if (file) {
+    window.umami.track("observation-image-browse-upload");
     void upload(file);
   }
 };
 
-const dropped = (
-  e: DragEvent,
-) => {
-  const file =
-    e.dataTransfer?.files[0];
+const dropped = (e: DragEvent) => {
+  const file = e.dataTransfer?.files[0];
 
   if (file) {
+    window.umami.track("observation-image-drop-upload");
     void upload(file);
   }
 };
@@ -228,25 +226,25 @@ const identify = async () => {
 
   loading.identify = true;
 
-  notificationStore.info(`Finding Candidates for ${selected.value.size} Segments...`);
+  const selectedSegments = segments.value.filter(
+    (segment) => selected.value.has(segment.id)
+  );
 
+  notificationStore.info(`Finding Candidates for ${selectedSegments.length} Segments...`);
+  window.umami.track("candidates-find-by-segments", { "selectedSegments": selectedSegments.map(({ polygon, ...segment }) => segment) });
+  
   try {
-    const result =
-      await observationService.identifyCoralBySegments(
-        segments.value.filter(
-          (segment) =>
-            selected.value.has(segment.id),
-        ),
-        image.value,
-      );
-
+    const result = await observationService.identifyCoralBySegments(selectedSegments, image.value);
+    window.umami.track("candidates-find-by-segments-finish");    
+    
     updateCandidates(
       result.candidates ?? [],
     );
-
+    
     notificationStore.success(`Found ${result.candidates?.length ?? 0} Candidates`);
   } catch (e) {
     notificationStore.error(e instanceof Error ? e.message : "Could not find matches.");
+    window.umami.captureException(e);
   } finally {
     loading.identify = false;
   }
@@ -262,18 +260,19 @@ const confirm = async (payload: ConfirmPayload) => {
   if (!image.value) {
     return;
   }
-
+  
   loading.confirm = true;
-
+  
   const previousCandidates = candidates.value;
   const previousSelected = selected.value;
-
+  
   notificationStore.info("Saving Observation...");
-
+  window.umami.track("observation-confirm", { payload });
+  
   try {
     candidates.value = [];
     selected.value = new Set();
-
+    
     await observationService.confirmCoral({
       image: image.value,
       selectedSegments: segments.value.filter((segment) => previousSelected.has(segment.id)),
@@ -282,12 +281,14 @@ const confirm = async (payload: ConfirmPayload) => {
       coralName: payload.coralName,
       surveyId: coralDataStore.getSelectedSurveyId(),
     });
-
+    
     notificationStore.success(`Observation for ${payload.coralName} has been successfully saved`);
+    window.umami.track("observation-confirm-finish");
   } catch (e) {
     notificationStore.error(e instanceof Error ? e.message : "Could not save Observation");
     candidates.value = previousCandidates;
     selected.value = previousSelected;
+    window.umami.captureException(e);
   } finally {
     loading.confirm = false;
   }
