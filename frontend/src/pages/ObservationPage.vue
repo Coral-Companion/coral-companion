@@ -7,10 +7,10 @@
       <!-- Image / segmentation panel -->
       <section class="flex flex-col overflow-hidden rounded border border-coral-surface-border bg-coral-surface">
         <div
-          class="grid grid-cols-[1fr_1fr_1fr] items-center gap-4 border-b border-coral-surface-border px-4 py-3 text-xs">
+          class="grid grid-cols-5 items-center gap-4 border-b border-coral-surface-border px-4 py-3 text-xs">
 
-          <div class="mr-auto">
-            <button class="px-3 py-1.5 rounded border border-coral-button-border hover:bg-coral-button-hover"
+          <div class="flex flex-col">
+            <button class="px-3 py-2 rounded border border-coral-button-border hover:bg-coral-button-hover"
               @click="picker?.click()">
               New Image
             </button>
@@ -30,14 +30,13 @@
               type="range" min="0" max="1" step=".05" class="w-20 accent-coral-primary disabled:opacity-40" />
           </div>
 
-          <div class="flex flex-col items-center ml-auto gap-3">
             <span class="text-coral-secondary-text">
+              Segments selected: 
               <b class="text-coral-primary-text">
                 {{ selected.size }}
               </b>
-              of
+              /
               {{ segments.length }}
-              segments selected
             </span>
 
             <button :disabled="!selected.size || loading.identify"
@@ -49,7 +48,16 @@
                   : "Find coral colony for selection"
               }}
             </button>
-          </div>
+
+            <button :disabled="loading.segment || layers >= 5"
+              class="px-3 py-2 rounded border border-coral-button-border hover:bg-coral-button-hover disabled:opacity-40"
+              @click="rerunSegmentation">
+              {{
+                loading.segment
+                  ? "Finding..."
+                  : "Find more"
+              }}
+            </button>
 
         </div>
 
@@ -140,6 +148,7 @@ const opacity = ref(0.55);
 const error = ref("");
 const info = ref("");
 const success = ref("");
+const layers = ref(0);
 
 const loading = reactive({
   segment: false,
@@ -180,19 +189,48 @@ const upload = async (
   segments.value = [];
   selected.value = new Set();
   candidates.value = [];
+  layers.value = 0;
 
   loading.segment = true;
 
   notificationStore.info("Calculating Segments...");
 
   try {
-    const uploadResult = await segmentation.segmentImage(file);
+    const uploadResult = await segmentation.segmentImage(file, layers.value);
 
     segments.value = uploadResult.segments;
 
     updateCandidates(uploadResult.observationCandidates);
 
     notificationStore.success("Segments Calculated");
+  } catch (e) {
+    notificationStore.error(e instanceof Error ? e.message : "Segmentation failed.");
+    window.umami.captureException(e);
+  } finally {
+    loading.segment = false;
+  }
+};
+
+const rerunSegmentation = async () => {
+  if (!image.value) {
+    return;
+  }
+
+  const newLayers = Math.min(layers.value + 1, 5);
+  layers.value = newLayers;
+
+  loading.segment = true;
+
+  notificationStore.info("Re-running Segmentation...");
+
+  try {
+    const uploadResult = await segmentation.segmentImage(image.value, layers.value);
+
+    segments.value = uploadResult.segments;
+
+    updateCandidates(uploadResult.observationCandidates);
+
+    notificationStore.success("Segments Recalculated");
   } catch (e) {
     notificationStore.error(e instanceof Error ? e.message : "Segmentation failed.");
     window.umami.captureException(e);

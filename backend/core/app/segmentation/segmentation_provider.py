@@ -9,5 +9,7 @@ from app.segmentation.models import SegmentationResult
 
 class SegmentationProvider(ABC):
     @abstractmethod
-    async def segment(self, image: bytes, image_filename: str) -> SegmentationResult:
+    async def segment(
+        self, image: bytes, image_filename: str, layers: int = 0
+    ) -> SegmentationResult:
         ...

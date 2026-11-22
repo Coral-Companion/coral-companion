@@ -7,7 +7,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile, Form
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
@@ -18,6 +18,7 @@ from third_party.coralscop.segment_anything import (
 from app.utils.performance_profiler import performance_stage
 from .models import BoundingBox, Point, Segment, SegmentationResult
 
+
 logger = logging.getLogger("uvicorn.error")
 
 MODEL_TYPE = "vit_b"
@@ -25,9 +26,13 @@ MAX_UPLOAD_MEGABYTES = 15
 MAX_UPLOAD_BYTES = MAX_UPLOAD_MEGABYTES * 1024 * 1024
 MAX_IMAGE_PIXELS = 40_000_000
 
-def load_mask_generator(checkpoint_path: Path, device: str):
-    """Load CoralSCOP once and return its mask generator."""
-    
+DEFAULT_LAYERS = 0
+DEFAULT_POINTS_PER_SIDE = 10
+DEFAULT_POINTS_PER_BATCH = 32
+
+
+def load_mask_generator_model(checkpoint_path: Path, device: str):
+    """Load CoralSCOP mask generator model once and return it."""
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
 
@@ -36,19 +41,22 @@ def load_mask_generator(checkpoint_path: Path, device: str):
     sam = sam_model_registry[MODEL_TYPE](checkpoint=str(checkpoint_path))
     sam.to(device=device)
 
-    generator = SamAutomaticMaskGenerator(
-        model=sam,
-        points_per_side=10,
+    logger.info("CoralSCOP loaded successfully on %s", device)
+    return sam
+
+
+def create_mask_generator(model, layers: int, points_per_side: int, points_per_batch: int) -> SamAutomaticMaskGenerator:
+    """Create a SamAutomaticMaskGenerator for the given SAM model and crop layers."""
+    return SamAutomaticMaskGenerator(
+        model=model,
+        points_per_side=points_per_side,
         pred_iou_thresh=0.75,
         stability_score_thresh=0.75,
-        crop_n_layers=0,
+        crop_n_layers=layers,
         crop_n_points_downscale_factor=2,
         min_mask_region_area=100,
-        points_per_batch=32,
+        points_per_batch=points_per_batch,
     )
-
-    logger.info("CoralSCOP loaded successfully on %s", device)
-    return generator
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,15 +71,15 @@ async def lifespan(app: FastAPI):
     )
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    app.state.mask_generator = None
+    app.state.mask_generator_model = None
     app.state.device = device
 
     try:
-        app.state.mask_generator = load_mask_generator(checkpoint_path, device)
+        app.state.mask_generator_model = load_mask_generator_model(checkpoint_path, device)
         yield
     finally:
         logger.info("Cleaning up segmentation worker")
-        app.state.mask_generator = None
+        app.state.mask_generator_model = None
         gc.collect()
 
         if torch.cuda.is_available():
@@ -84,20 +92,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-@app.get("/health")
-async def health_check(request: Request):
-    generator = get_mask_generator(request)
-    return {
-        "status": "healthy" if generator is not None else "starting",
-        "device": request.app.state.device,
-        "model_loaded": generator is not None,
-    }
-
 @app.post("/api/segment")
-async def segment_image(request: Request, file: UploadFile = File(...)):
-    mask_generator = get_mask_generator(request)
-    if mask_generator is None:
+async def segment_image(
+    request: Request,
+    file: UploadFile = File(...),
+    layers: int = Form(DEFAULT_LAYERS),
+    points_per_side: int = Form(DEFAULT_POINTS_PER_SIDE),
+    points_per_batch: int = Form(DEFAULT_POINTS_PER_BATCH),
+):
+    if layers is None or layers < 0 or layers > 5:
+        layers = DEFAULT_LAYERS
+    if (points_per_side < 0 or points_per_side > 100):
+        points_per_side = DEFAULT_POINTS_PER_SIDE
+    if (points_per_batch < 0 or points_per_batch > 1_000):
+        points_per_batch = DEFAULT_POINTS_PER_BATCH
+
+    sam_model = getattr(request.app.state, "mask_generator_model", None)
+    if sam_model is None:
         raise HTTPException(status_code=503, detail="Model not loaded.")
 
     try:
@@ -107,11 +118,13 @@ async def segment_image(request: Request, file: UploadFile = File(...)):
 
     try:
         logger.info(
-            f"Starting inference: width={image.shape[1]} height={image.shape[0]} device={request.app.state.device}"
+            f"Starting inference: width={image.shape[1]} height={image.shape[0]} device={request.app.state.device} layers={layers} points_per_batch={points_per_batch} points_per_side={points_per_side}"
         )
 
-        with performance_stage("Segmentation"):
-            masks = mask_generator.generate(rgb)
+        mask_generator = create_mask_generator(sam_model, layers, points_per_side, points_per_batch)
+
+#        with performance_stage("Segmentation"):
+        masks = mask_generator.generate(rgb)
 
         segments: list[Segment] = []
 
@@ -157,11 +170,6 @@ async def segment_image(request: Request, file: UploadFile = File(...)):
             status_code=500,
             detail="Segmentation inference failed.",
         )
-
-
-def get_mask_generator(request: Request):
-    return getattr(request.app.state, "mask_generator", None)
-
 
 async def prepare_image(file: UploadFile):
     file_bytes = await file.read(MAX_UPLOAD_BYTES + 1)
