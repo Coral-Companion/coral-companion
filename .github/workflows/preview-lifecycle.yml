@@ -123,21 +123,26 @@ jobs:
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
           MODAL_ENVIRONMENT: ${{ steps.slug.outputs.preview_name }}
         run: |
-          set +e
           MODAL_OUTPUT=$(modal deploy modal_worker.py 2>&1)
-          EXIT_CODE=$?
-          set -e
-
-          echo "modal deploy exit code: $EXIT_CODE"
           echo "$MODAL_OUTPUT"
 
-          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | grep -oE 'https://[^ ]+\.modal\.run' || true)
+      - name: Get segmentation worker URL
+        id: modal-url
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        working-directory: backend/segmentation-worker
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+          MODAL_ENVIRONMENT: ${{ steps.slug.outputs.preview_name }}
+        run: |
+          MODAL_JSON=$(modal function info coral-companion-segmentation-worker/serve --env "${{ steps.slug.outputs.preview_name }}" --json)
+          SEGMENTATION_WORKER_URL=$(echo "$MODAL_JSON" | python -c "import sys,json; print(json.load(sys.stdin)['web_info']['web_url'])")
           if [ -z "$SEGMENTATION_WORKER_URL" ]; then
-              echo "❌ Could not extract segmentation worker URL from Modal deploy output"
-              exit 1
+            echo "❌ Could not extract web_url from modal function info"
+            exit 1
           fi
           echo "segmentation_worker_url=$SEGMENTATION_WORKER_URL" >> $GITHUB_OUTPUT
-      
+
       # ---- R2 bucket ----
       - name: Create R2 preview bucket
         if: inputs.action == 'create'
