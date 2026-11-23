@@ -3,8 +3,6 @@ description: Redeploys an existing preview environment when new commits are push
 
 on:
   push:
-    branches:
-      - '**'
     branches-ignore:
       - main
 
