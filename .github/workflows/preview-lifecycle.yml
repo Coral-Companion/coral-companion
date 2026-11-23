@@ -87,7 +87,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         continue-on-error: true
         run: |
-          supabase branches get "${{ steps.slug.outputs.preview_name }}" \
+          npx supabase branches get "${{ steps.slug.outputs.preview_name }}" \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --access-token "$SUPABASE_ACCESS_TOKEN" \
             --experimental -o env > /tmp/supabase-check.out 2>&1 || true
@@ -111,7 +111,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          supabase branches create "${{ steps.slug.outputs.preview_name }}" \
+          npx supabase branches create "${{ steps.slug.outputs.preview_name }}" \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --access-token "$SUPABASE_ACCESS_TOKEN" \
             --experimental \
@@ -124,7 +124,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          supabase branches get "${{ steps.slug.outputs.preview_name }}" \
+          npx supabase branches get "${{ steps.slug.outputs.preview_name }}" \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --access-token "$SUPABASE_ACCESS_TOKEN" \
             --experimental -o env > /tmp/supabase-env
@@ -369,7 +369,7 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         continue-on-error: true
         run: |
-          supabase branches delete "${{ steps.slug.outputs.preview_name }}" \
+          npx supabase branches delete "${{ steps.slug.outputs.preview_name }}" \
             --project-ref "$SUPABASE_PROJECT_REF" \
             --access-token "$SUPABASE_ACCESS_TOKEN" \
             --experimental --yes
