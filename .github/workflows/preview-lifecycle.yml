@@ -143,38 +143,6 @@ jobs:
           fi
           echo "segmentation_worker_url=$SEGMENTATION_WORKER_URL" >> $GITHUB_OUTPUT
 
-      # ---- R2 bucket ----
-      - name: Create R2 preview bucket
-        if: inputs.action == 'create'
-        id: r2-bucket
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
-          npx wrangler r2 bucket create "${BUCKET_NAME}" \
-            --config /tmp/wrangler.preview.${SLUG}.jsonc
-          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
-
-      - name: Upload R2 seed objects
-        if: inputs.action == 'create'
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          BUCKET_NAME: ${{ steps.r2-bucket.outputs.bucket_name }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: |
-          for file in $(find preview-data/r2-seed -type f | sort); do
-            # Preserve directory structure relative to preview-data/r2-seed/
-            KEY="${file#preview-data/r2-seed/}"
-            aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
-              --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-              --access-key "$R2_ACCESS_KEY_ID" \
-              --secret-key "$R2_SECRET_ACCESS_KEY" \
-              --no-progress
-          done
-
       # ---- Wrangler preview config ----
       - name: Generate preview wrangler config
         if: inputs.action == 'create' || inputs.action == 'redeploy'
@@ -182,7 +150,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SEGMENTATION_WORKER_URL: ${{ steps.modal-deploy.outputs.segmentation_worker_url }}
+          SEGMENTATION_WORKER_URL: ${{ steps.modal-url.outputs.segmentation_worker_url }}
         run: |
           SLUG="${{ steps.slug.outputs.slug }}"
           PREVIEW_NAME="${{ steps.slug.outputs.preview_name }}"
@@ -243,6 +211,38 @@ jobs:
           EOF
           echo "config_path=/tmp/wrangler.preview.${SLUG}.jsonc" >> $GITHUB_OUTPUT
           echo "worker_name=coral-companion-router-preview-${SLUG}" >> $GITHUB_OUTPUT
+
+      # ---- R2 bucket ----
+      - name: Create R2 preview bucket
+        if: inputs.action == 'create'
+        id: r2-bucket
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
+          npx wrangler r2 bucket create "${BUCKET_NAME}" \
+            --config /tmp/wrangler.preview.${SLUG}.jsonc
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload R2 seed objects
+        if: inputs.action == 'create'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET_NAME: ${{ steps.r2-bucket.outputs.bucket_name }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          for file in $(find preview-data/r2-seed -type f | sort); do
+            # Preserve directory structure relative to preview-data/r2-seed/
+            KEY="${file#preview-data/r2-seed/}"
+            aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
+              --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+              --access-key "$R2_ACCESS_KEY_ID" \
+              --secret-key "$R2_SECRET_ACCESS_KEY" \
+              --no-progress
+          done
 
       - name: Set preview secrets via wrangler
         if: inputs.action == 'create' || inputs.action == 'redeploy'
