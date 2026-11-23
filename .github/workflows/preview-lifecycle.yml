@@ -158,7 +158,7 @@ jobs:
           DATABASE_URL="${DATABASE_URL}"
           SUPABASE_KEY="${SUPABASE_KEY}"
           SEGMENTATION_WORKER_URL="${SEGMENTATION_WORKER_URL}"
-
+          
           cat > /tmp/wrangler.preview.${SLUG}.jsonc << EOF
           {
             "\$schema": "node_modules/wrangler/config-schema.json",
@@ -222,7 +222,7 @@ jobs:
         run: |
           BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
           npx wrangler r2 bucket create "${BUCKET_NAME}" \
-            --config /tmp/wrangler.preview.${SLUG}.jsonc
+            --config ${{ steps.wrangler-config.outputs.config_path}}
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload R2 seed objects
