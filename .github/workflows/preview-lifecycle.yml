@@ -94,7 +94,12 @@ jobs:
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
           MODAL_ENVIRONMENT: ${{ steps.slug.outputs.preview_name }}
         run: |
+          set +e
           MODAL_OUTPUT=$(modal deploy modal_worker.py 2>&1)
+          EXIT_CODE=$?
+          set -e
+
+          echo "modal deploy exit code: $EXIT_CODE"
           echo "$MODAL_OUTPUT"
 
       # ---- R2 bucket ----
