@@ -21,8 +21,9 @@ coralscop-env/
 *.jpg
 *.jpeg
 *.png
-!test_resources/   # Allow tracking a specific small test folder if needed
 !**/dev_fixtures/**/*.jpg
+# Allow tracking preview R2 seed images
+!backend/core/preview-data/**/*.jpg
 !frontend/public/*
 !frontend/src/assets/*
 
