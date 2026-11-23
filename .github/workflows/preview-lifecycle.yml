@@ -131,6 +131,13 @@ jobs:
           echo "modal deploy exit code: $EXIT_CODE"
           echo "$MODAL_OUTPUT"
 
+          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | tr -d '\n' | grep -oE 'https://[^ ]+\.modal\.run' || true)
+          if [ -z "$SEGMENTATION_WORKER_URL" ]; then
+              echo "❌ Could not extract segmentation worker URL from Modal deploy output"
+              exit 1
+          fi
+          echo "segmentation_worker_url=$SEGMENTATION_WORKER_URL" >> $GITHUB_OUTPUT
+      
       # ---- R2 bucket ----
       - name: Create R2 preview bucket
         if: inputs.action == 'create'
