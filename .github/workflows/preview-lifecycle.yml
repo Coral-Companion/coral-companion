@@ -131,7 +131,7 @@ jobs:
           echo "modal deploy exit code: $EXIT_CODE"
           echo "$MODAL_OUTPUT"
 
-          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | tr -d '\n' | grep -oE 'https://[^ ]+\.modal\.run' || true)
+          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | grep -oE 'https://[^ ]+\.modal\.run' || true)
           if [ -z "$SEGMENTATION_WORKER_URL" ]; then
               echo "❌ Could not extract segmentation worker URL from Modal deploy output"
               exit 1
@@ -147,16 +147,9 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
-          HTTP_CODE=$(curl -s -o /tmp/r2-create.out -w "%{http_code}" \
-            -X PUT "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            -H "Content-Type: application/json")
-          cat /tmp/r2-create.out
-          echo ""
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "❌ R2 bucket creation failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
+          npx wrangler r2 bucket create "${BUCKET_NAME}" \
+            --account-id "${CLOUDFLARE_ACCOUNT_ID}" \
+            --config /tmp/wrangler.preview.${SLUG}.jsonc
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload R2 seed objects
