@@ -76,6 +76,10 @@ jobs:
         working-directory: api-router
         run: npm ci
 
+      - name: Install AWS CLI
+        run: |
+          python -m pip install --upgrade awscli
+
       # ---- Modal environment ----
       - name: Create Modal environment
         if: inputs.action == 'create'
@@ -84,6 +88,31 @@ jobs:
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
         run: |
           modal environment create "${{ steps.slug.outputs.preview_name }}" || true
+
+      - name: Download CoralSCOP checkpoint from R2
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        working-directory: backend/segmentation-worker
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          CHECKPOINT="third_party/coralscop/checkpoints/vit_b_coralscop.pth"
+          R2_ENDPOINT="https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          mkdir -p "$(dirname "$CHECKPOINT")"
+
+          aws s3 cp \
+            s3://coral-companion-models/coralscop/vit_b_coralscop-v1.pth \
+            "$CHECKPOINT" \
+            --endpoint-url "$R2_ENDPOINT"
+
+          test -s "$CHECKPOINT"
+          echo "Checkpoint downloaded successfully."
+          ls -lh "$CHECKPOINT"
 
       - name: Deploy segmentation worker to Modal
         if: inputs.action == 'create' || inputs.action == 'redeploy'
@@ -132,7 +161,6 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          pip install --quiet awscli
           for file in $(find preview-data/r2-seed -type f | sort); do
             # Preserve directory structure relative to preview-data/r2-seed/
             KEY="${file#preview-data/r2-seed/}"
