@@ -96,7 +96,7 @@ jobs:
         run: |
           MODAL_OUTPUT=$(modal deploy modal_worker.py 2>&1)
           echo "$MODAL_OUTPUT"
-          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | grep -oE 'https://[a-z0-9-]+\.modal\.run[^ ]*' | head -1)
+          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | grep -oE 'https://[^ ]+.modal.run')
           if [ -z "$SEGMENTATION_WORKER_URL" ]; then
             echo "❌ Could not extract segmentation worker URL from Modal deploy output"
             exit 1
