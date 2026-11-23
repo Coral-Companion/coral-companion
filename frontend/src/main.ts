@@ -12,6 +12,13 @@ if (import.meta.env.VITE_UMAMI_SCRIPT_SOURCE) {
     script.src = import.meta.env.VITE_UMAMI_SCRIPT_SOURCE
     script.dataset.websiteId = import.meta.env.VITE_UMAMI_ID
     document.head.appendChild(script)
+} else {
+    const umamiMock = { 
+        track: (_: any) => {},
+        identify: (_: any) => {},
+        captureException: (_: any) => {}
+    };
+    window.umami = umamiMock;
 }
 
 createApp(App)

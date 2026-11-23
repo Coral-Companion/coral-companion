@@ -47,7 +47,9 @@ class FixtureProvider(SegmentationProvider):
 
         return json_path
 
-    async def segment(self, image: bytes, image_filename: str) -> SegmentationResult:
+    async def segment(
+        self, image: bytes, image_filename: str, layers: int = 0
+    ) -> SegmentationResult:
         json_file = self._get_fixture_json_path(image_filename)
 
         with json_file.open("r", encoding="utf-8") as handle:

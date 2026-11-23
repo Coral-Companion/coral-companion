@@ -11,7 +11,24 @@
                 "app.api.main:app",
                 "--reload",
                 "--port",
-                "8000",
+                "8080",
+                "--log-level",
+                "debug"
+            ],
+            "jinja": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Backend Segmentation Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/backend/segmentation-worker",
+            "args": [
+                "app.api.main:app",
+                "--reload",
+                "--port",
+                "8081",
                 "--log-level",
                 "debug"
             ],

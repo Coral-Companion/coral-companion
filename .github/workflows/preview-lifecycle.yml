@@ -1,0 +1,376 @@
+name: Preview lifecycle
+description: Reusable workflow to create, redeploy, or teardown a preview environment
+
+on:
+  workflow_call:
+    inputs:
+      action:
+        description: "create | redeploy | teardown"
+        type: string
+        required: true
+      branch:
+        description: "Git branch to preview"
+        type: string
+        required: true
+      slug:
+        description: "URL-safe preview slug (defaults to branch-based slug)"
+        type: string
+        required: false
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+      MODAL_TOKEN_ID:
+        required: true
+      MODAL_TOKEN_SECRET:
+        required: true
+      MODAL_KEY:
+        required: true
+      MODAL_SECRET:
+        required: true
+      SUPABASE_ACCESS_TOKEN:
+        required: true
+      SUPABASE_PROJECT_REF:
+        required: true
+      R2_ACCESS_KEY_ID:
+        required: true
+      R2_SECRET_ACCESS_KEY:
+        required: true
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          fetch-depth: 0
+
+      - name: Determine preview name and slug
+        id: slug
+        run: |
+          BRANCH="${{ inputs.branch }}"
+          # Strip refs/heads/ prefix (comes from the `delete` event)
+          BRANCH="${BRANCH#refs/heads/}"
+          SLUG="${{ inputs.slug }}"
+          if [ -z "$SLUG" ]; then
+            SLUG=$(echo "$BRANCH" | tr '/' '-' | tr '[:upper:]' '[:lower:]' \
+              | sed 's/[^a-z0-9-]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
+          fi
+          PREVIEW_NAME="preview-${SLUG}"
+          echo "preview_name=$PREVIEW_NAME" >> $GITHUB_OUTPUT
+          echo "slug=$SLUG" >> $GITHUB_OUTPUT
+
+      - name: Install Supabase CLI
+        run: npm install -g @supabase/cli
+
+      - name: Install Modal
+        run: pip install --upgrade modal
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install wrangler
+        working-directory: api-router
+        run: npm ci
+
+      # ---- Supabase branch ----
+      - name: Check preview environment exists (redeploy only)
+        if: inputs.action == 'redeploy'
+        id: supabase-check
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        continue-on-error: true
+        run: |
+          supabase branches get "${{ steps.slug.outputs.preview_name }}" \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --access-token "$SUPABASE_ACCESS_TOKEN" \
+            --experimental -o env > /tmp/supabase-check.out 2>&1 || true
+          if grep -q "DATABASE_URL=" /tmp/supabase-check.out; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Abort redeploy if no preview exists
+        if: inputs.action == 'redeploy' && steps.supabase-check.outputs.exists == 'false'
+        run: |
+          echo "❌ No preview environment exists for branch '${{ inputs.branch }}' (slug: ${{ steps.slug.outputs.slug }})."
+          echo "Use the 'Create preview environment' manual gate to create one first."
+          exit 1
+
+      - name: Create Supabase preview branch
+        if: inputs.action == 'create'
+        id: supabase-create
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase branches create "${{ steps.slug.outputs.preview_name }}" \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --access-token "$SUPABASE_ACCESS_TOKEN" \
+            --experimental \
+            --with-data
+
+      - name: Get Supabase branch credentials
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        id: supabase-creds
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          supabase branches get "${{ steps.slug.outputs.preview_name }}" \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --access-token "$SUPABASE_ACCESS_TOKEN" \
+            --experimental -o env > /tmp/supabase-env
+          DATABASE_URL=$(grep '^DATABASE_URL=' /tmp/supabase-env | cut -d= -f2-)
+          SUPABASE_KEY=$(grep '^SUPABASE_KEY=' /tmp/supabase-env | cut -d= -f2-)
+          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
+          echo "supabase_key=$SUPABASE_KEY" >> $GITHUB_OUTPUT
+
+      # ---- Modal environment ----
+      - name: Create Modal environment
+        if: inputs.action == 'create'
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          modal environment create "${{ steps.slug.outputs.preview_name }}" || true
+
+      - name: Deploy segmentation worker to Modal
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        id: modal-deploy
+        working-directory: backend/segmentation-worker
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+          MODAL_ENVIRONMENT: ${{ steps.slug.outputs.preview_name }}
+        run: |
+          MODAL_OUTPUT=$(modal deploy modal_worker.py 2>&1)
+          echo "$MODAL_OUTPUT"
+          SEGMENTATION_WORKER_URL=$(echo "$MODAL_OUTPUT" | grep -oE 'https://[a-z0-9-]+\.modal\.run[^ ]*' | head -1)
+          if [ -z "$SEGMENTATION_WORKER_URL" ]; then
+            echo "❌ Could not extract segmentation worker URL from Modal deploy output"
+            exit 1
+          fi
+          echo "segmentation_worker_url=$SEGMENTATION_WORKER_URL" >> $GITHUB_OUTPUT
+
+      # ---- R2 bucket ----
+      - name: Create R2 preview bucket
+        if: inputs.action == 'create'
+        id: r2-bucket
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
+          HTTP_CODE=$(curl -s -o /tmp/r2-create.out -w "%{http_code}" \
+            -X PUT "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json")
+          cat /tmp/r2-create.out
+          echo ""
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "❌ R2 bucket creation failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
+      - name: Upload R2 seed objects
+        if: inputs.action == 'create'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET_NAME: ${{ steps.r2-bucket.outputs.bucket_name }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          pip install --quiet awscli
+          for file in $(find preview-data/r2-seed -type f | sort); do
+            # Preserve directory structure relative to preview-data/r2-seed/
+            KEY="${file#preview-data/r2-seed/}"
+            aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
+              --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+              --access-key "$R2_ACCESS_KEY_ID" \
+              --secret-key "$R2_SECRET_ACCESS_KEY" \
+              --no-progress
+          done
+
+      # ---- Wrangler preview config ----
+      - name: Generate preview wrangler config
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        id: wrangler-config
+        env:
+          DATABASE_URL: ${{ steps.supabase-creds.outputs.database_url }}
+          SUPABASE_KEY: ${{ steps.supabase-creds.outputs.supabase_key }}
+          SEGMENTATION_WORKER_URL: ${{ steps.modal-deploy.outputs.segmentation_worker_url }}
+        run: |
+          SLUG="${{ steps.slug.outputs.slug }}"
+          PREVIEW_NAME="${{ steps.slug.outputs.preview_name }}"
+          BUCKET_NAME="coral-companion-media-preview-${SLUG}"
+          DATABASE_URL="${DATABASE_URL}"
+          SUPABASE_KEY="${SUPABASE_KEY}"
+          SEGMENTATION_WORKER_URL="${SEGMENTATION_WORKER_URL}"
+
+          cat > /tmp/wrangler.preview.${SLUG}.jsonc << EOF
+          {
+            "\$schema": "node_modules/wrangler/config-schema.json",
+            "name": "coral-companion-router-preview-${SLUG}",
+            "main": "src/index.ts",
+            "compatibility_date": "2025-06-23",
+            "compatibility_flags": ["nodejs_compat"],
+            "observability": { "enabled": true },
+            "assets": {
+              "directory": "../frontend/dist",
+              "binding": "ASSETS",
+              "not_found_handling": "single-page-application",
+              "run_worker_first": ["/api/*"]
+            },
+            "containers": [
+              {
+                "class_name": "BackendCore",
+                "image": "../backend/core/Dockerfile",
+                "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 4000 },
+                "max_instances": 3
+              }
+            ],
+            "durable_objects": {
+              "bindings": [{
+                "class_name": "BackendCore",
+                "name": "CORE_CONTAINER"
+              }]
+            },
+            "exports": {
+              "BackendCore": { "type": "durable-object", "storage": "sqlite" }
+            },
+            "vars": {
+              "BUCKET_NAME": "${BUCKET_NAME}",
+              "SEGMENTATION_PROVIDER": "coralscop",
+              "R2_PUBLIC_BASE_URL": "https://${BUCKET_NAME}.r2.cloudflarestorage.com"
+            },
+            "secrets": {
+              "required": [
+                "SUPABASE_KEY",
+                "DATABASE_URL",
+                "SEGMENTATION_WORKER_URL",
+                "MODAL_KEY",
+                "MODAL_SECRET",
+                "R2_ACCOUNT_ID",
+                "R2_ACCESS_KEY_ID",
+                "R2_SECRET_ACCESS_KEY"
+              ]
+            }
+          }
+          EOF
+          echo "config_path=/tmp/wrangler.preview.${SLUG}.jsonc" >> $GITHUB_OUTPUT
+          echo "worker_name=coral-companion-router-preview-${SLUG}" >> $GITHUB_OUTPUT
+
+      - name: Set preview secrets via wrangler
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        working-directory: api-router
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DATABASE_URL: ${{ steps.supabase-creds.outputs.database_url }}
+          SUPABASE_KEY: ${{ steps.supabase-creds.outputs.supabase_key }}
+          SEGMENTATION_WORKER_URL: ${{ steps.modal-deploy.outputs.segmentation_worker_url }}
+          MODAL_KEY: ${{ secrets.MODAL_KEY }}
+          MODAL_SECRET: ${{ secrets.MODAL_SECRET }}
+          R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          CONFIG_PATH="${{ steps.wrangler-config.outputs.config_path }}"
+          echo "$DATABASE_URL" | npx wrangler secret put --config "$CONFIG_PATH" DATABASE_URL
+          echo "$SUPABASE_KEY" | npx wrangler secret put --config "$CONFIG_PATH" SUPABASE_KEY
+          echo "$SEGMENTATION_WORKER_URL" | npx wrangler secret put --config "$CONFIG_PATH" SEGMENTATION_WORKER_URL
+          echo "$MODAL_KEY" | npx wrangler secret put --config "$CONFIG_PATH" MODAL_KEY
+          echo "$MODAL_SECRET" | npx wrangler secret put --config "$CONFIG_PATH" MODAL_SECRET
+          echo "$R2_ACCOUNT_ID" | npx wrangler secret put --config "$CONFIG_PATH" R2_ACCOUNT_ID
+          echo "$R2_ACCESS_KEY_ID" | npx wrangler secret put --config "$CONFIG_PATH" R2_ACCESS_KEY_ID
+          echo "$R2_SECRET_ACCESS_KEY" | npx wrangler secret put --config "$CONFIG_PATH" R2_SECRET_ACCESS_KEY
+
+      - name: Build frontend
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy preview router to Cloudflare
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        working-directory: api-router
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          CONFIG_PATH="${{ steps.wrangler-config.outputs.config_path }}"
+          npx wrangler deploy --config "$CONFIG_PATH"
+          echo "✅ Preview deployed successfully"
+
+      - name: Output preview URL
+        if: inputs.action == 'create'
+        run: |
+          WORKER_NAME="${{ steps.wrangler-config.outputs.worker_name }}"
+          echo "🎉 Preview environment ready!"
+          echo "Preview URL: https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev"
+          echo "preview_url=https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev" >> $GITHUB_OUTPUT
+
+      # ---- Teardown ----
+      - name: Empty and delete R2 preview bucket
+        if: inputs.action == 'teardown'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          BUCKET_NAME="coral-companion-preview-${{ steps.slug.outputs.slug }}"
+          OBJECTS=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}/objects?limit=1000" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" | grep -oE '"key":"[^"]+"' | cut -d'"' -f4)
+          if [ -n "$OBJECTS" ]; then
+            for KEY in $OBJECTS; do
+              curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}/objects/${KEY}" \
+                -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" > /dev/null
+            done
+          fi
+          curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
+          echo "✅ R2 bucket deleted"
+
+      - name: Delete preview worker from Cloudflare
+        if: inputs.action == 'teardown'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        continue-on-error: true
+        run: |
+          WORKER_NAME="coral-companion-router-preview-${{ steps.slug.outputs.slug }}"
+          curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/services/${WORKER_NAME}" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
+          echo "✅ Preview worker deleted"
+
+      - name: Delete Modal environment
+        if: inputs.action == 'teardown'
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        continue-on-error: true
+        run: |
+          modal environment delete "${{ steps.slug.outputs.preview_name }}" --yes || true
+          echo "✅ Modal environment deleted"
+
+      - name: Delete Supabase preview branch
+        if: inputs.action == 'teardown'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        continue-on-error: true
+        run: |
+          supabase branches delete "${{ steps.slug.outputs.preview_name }}" \
+            --project-ref "$SUPABASE_PROJECT_REF" \
+            --access-token "$SUPABASE_ACCESS_TOKEN" \
+            --experimental --yes
+          echo "✅ Supabase branch deleted"

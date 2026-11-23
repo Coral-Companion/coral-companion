@@ -10,6 +10,7 @@ import httpx
 from fastapi import HTTPException, status
 from pydantic import ValidationError
 import numpy as np
+from app.persistence.storage import decode_image_bytes
 
 SEGMENTATION_WORKER_URL = os.getenv("SEGMENTATION_WORKER_URL", "http://localhost:8001")
 MODAL_KEY = os.getenv("MODAL_KEY", "")
@@ -23,14 +24,17 @@ class CoralScopProvider(SegmentationProvider):
         self.base_url = base_url.rstrip("/")
         self.logger = logging.getLogger("uvicorn.error")
     
-    async def segment(self, image: bytes, image_filename: str) -> SegmentationResult:
+    async def segment(
+        self, image: bytes, image_filename: str, layers: int = 0
+    ) -> SegmentationResult:
         """
         Sends raw image bytes as multipart/form-data to the segmentation worker
         and returns the parsed SegmentationResult schema.
         """
         url = f"{self.base_url}/api/segment"
         files = {"file": (image_filename, image, "image/jpeg")}
-        timeout = httpx.Timeout(120.0, connect=10.0)
+        data = {"layers": str(layers)}
+        timeout = httpx.Timeout(480.0, connect=10.0)
         headers = {
             "Modal-Key": MODAL_KEY,
             "Modal-Secret": MODAL_SECRET,
@@ -39,9 +43,11 @@ class CoralScopProvider(SegmentationProvider):
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 response = await client.post(
-                    url, 
-                    files=files, 
-                    headers=headers)
+                    url,
+                    files=files,
+                    data=data,
+                    headers=headers,
+                )
                 response.raise_for_status()
                 response_json = response.json()
                 result = SegmentationResult.model_validate(response_json["result"])
@@ -73,7 +79,8 @@ class CoralScopProvider(SegmentationProvider):
         
         if PRODUCE_FIXTURES:
             try:
-                export_segmentation_fixture(np.frombuffer(image), image_filename, result.segments)
+                image_array = decode_image_bytes(image)
+                export_segmentation_fixture(image_array, image_filename, result.segments)
             except Exception as e:
                 self.logger.exception(f"Segmentation failed writing fixture. {str(e)}")
                 # no need to raise, this is not critical
