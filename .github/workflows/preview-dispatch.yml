@@ -1,11 +1,11 @@
-name: Create preview environment
+name: "✨ Create Preview Environment"
 description: Manual gate to create an isolated preview environment for a branch
 
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Git branch to preview (e.g. feature/coastline)"
+        description: "Git branch to preview (e.g. feature/COCO-42-automated-coral-measurement)"
         type: string
         required: true
       slug:

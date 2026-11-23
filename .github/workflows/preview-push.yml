@@ -1,4 +1,4 @@
-name: Redeploy preview on push
+name: "🚀 Redeploy Preview"
 description: Redeploys an existing preview environment when new commits are pushed to its branch
 
 on:

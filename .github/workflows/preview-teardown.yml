@@ -1,4 +1,4 @@
-name: Teardown preview environment
+name: "🌅 Sunset Preview Environment"
 description: Deletes an isolated preview environment (on branch deletion or manual gate)
 
 on:
