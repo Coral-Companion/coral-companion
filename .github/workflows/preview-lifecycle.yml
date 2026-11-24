@@ -180,7 +180,7 @@ jobs:
         working-directory: frontend
         run: |
           npm ci
-          npm run build
+          npm run build-for-preview-environment
 
       - name: Deploy preview router to Cloudflare
         if: inputs.action == 'create' || inputs.action == 'redeploy'
