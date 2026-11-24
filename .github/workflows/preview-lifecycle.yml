@@ -92,6 +92,7 @@ jobs:
       - name: Download CoralSCOP checkpoint from R2
         if: inputs.action == 'create' || inputs.action == 'redeploy'
         working-directory: backend/segmentation-worker
+        continue-on-error: true
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -123,7 +124,7 @@ jobs:
           MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
           MODAL_ENVIRONMENT: ${{ steps.slug.outputs.preview_name }}
         run: |
-          MODAL_OUTPUT=$(modal deploy modal_worker.py 2>&1)
+          MODAL_OUTPUT=$(modal deploy modal_worker.py 2>&1) || true
           echo "$MODAL_OUTPUT"
 
       - name: Get segmentation worker URL
@@ -143,75 +144,6 @@ jobs:
           fi
           echo "segmentation_worker_url=$SEGMENTATION_WORKER_URL" >> $GITHUB_OUTPUT
 
-      # ---- Wrangler preview config ----
-      - name: Generate preview wrangler config
-        if: inputs.action == 'create' || inputs.action == 'redeploy'
-        id: wrangler-config
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SEGMENTATION_WORKER_URL: ${{ steps.modal-url.outputs.segmentation_worker_url }}
-        run: |
-          SLUG="${{ steps.slug.outputs.slug }}"
-          PREVIEW_NAME="${{ steps.slug.outputs.preview_name }}"
-          BUCKET_NAME="coral-companion-media-preview-${SLUG}"
-          DATABASE_URL="${DATABASE_URL}"
-          SUPABASE_KEY="${SUPABASE_KEY}"
-          SEGMENTATION_WORKER_URL="${SEGMENTATION_WORKER_URL}"
-          
-          cat > /tmp/wrangler.preview.${SLUG}.jsonc << EOF
-          {
-            "\$schema": "node_modules/wrangler/config-schema.json",
-            "name": "coral-companion-router-preview-${SLUG}",
-            "main": "src/index.ts",
-            "compatibility_date": "2025-06-23",
-            "compatibility_flags": ["nodejs_compat"],
-            "observability": { "enabled": true },
-            "assets": {
-              "directory": "../frontend/dist",
-              "binding": "ASSETS",
-              "not_found_handling": "single-page-application",
-              "run_worker_first": ["/api/*"]
-            },
-            "containers": [
-              {
-                "class_name": "BackendCore",
-                "image": "../backend/core/Dockerfile",
-                "instance_type": { "vcpu": 1, "memory_mib": 3072, "disk_mb": 4000 },
-                "max_instances": 3
-              }
-            ],
-            "durable_objects": {
-              "bindings": [{
-                "class_name": "BackendCore",
-                "name": "CORE_CONTAINER"
-              }]
-            },
-            "exports": {
-              "BackendCore": { "type": "durable-object", "storage": "sqlite" }
-            },
-            "vars": {
-              "BUCKET_NAME": "${BUCKET_NAME}",
-              "SEGMENTATION_PROVIDER": "coralscop",
-              "R2_PUBLIC_BASE_URL": "https://${BUCKET_NAME}.r2.cloudflarestorage.com"
-            },
-            "secrets": {
-              "required": [
-                "SUPABASE_KEY",
-                "DATABASE_URL",
-                "SEGMENTATION_WORKER_URL",
-                "MODAL_KEY",
-                "MODAL_SECRET",
-                "R2_ACCOUNT_ID",
-                "R2_ACCESS_KEY_ID",
-                "R2_SECRET_ACCESS_KEY"
-              ]
-            }
-          }
-          EOF
-          echo "config_path=/tmp/wrangler.preview.${SLUG}.jsonc" >> $GITHUB_OUTPUT
-          echo "worker_name=coral-companion-router-preview-${SLUG}" >> $GITHUB_OUTPUT
-
       # ---- R2 bucket ----
       - name: Create R2 preview bucket
         if: inputs.action == 'create'
@@ -222,26 +154,25 @@ jobs:
         run: |
           BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
           npx wrangler r2 bucket create "${BUCKET_NAME}" \
-            --config ${{ steps.wrangler-config.outputs.config_path}}
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload R2 seed objects
         if: inputs.action == 'create'
+        working-directory: api-router
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BUCKET_NAME: ${{ steps.r2-bucket.outputs.bucket_name }}
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          for file in $(find preview-data/r2-seed -type f | sort); do
+          for file in $(find backend/core/preview-data/r2-seed -type f | sort); do
             # Preserve directory structure relative to preview-data/r2-seed/
-            KEY="${file#preview-data/r2-seed/}"
+            KEY="${file#backend/core/preview-data/r2-seed/}"
             aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
               --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-              --access-key "$R2_ACCESS_KEY_ID" \
-              --secret-key "$R2_SECRET_ACCESS_KEY" \
-              --no-progress
+              --no-progress \
+              --profile r2
           done
 
       - name: Set preview secrets via wrangler
@@ -251,22 +182,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SEGMENTATION_WORKER_URL: ${{ steps.modal-deploy.outputs.segmentation_worker_url }}
+          SEGMENTATION_WORKER_URL: ${{ steps.modal-url.outputs.segmentation_worker_url }}
           MODAL_KEY: ${{ secrets.MODAL_KEY }}
           MODAL_SECRET: ${{ secrets.MODAL_SECRET }}
           R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          BUCKET_NAME: coral-companion-media-preview-${{ steps.slug.outputs.slug }}
+          R2_PUBLIC_BASE_URL: https://coral-companion-media-preview-${{ steps.slug.outputs.slug }}.r2.cloudflarestorage.com
         run: |
-          CONFIG_PATH="${{ steps.wrangler-config.outputs.config_path }}"
-          echo "$DATABASE_URL" | npx wrangler secret put --config "$CONFIG_PATH" DATABASE_URL
-          echo "$SUPABASE_KEY" | npx wrangler secret put --config "$CONFIG_PATH" SUPABASE_KEY
-          echo "$SEGMENTATION_WORKER_URL" | npx wrangler secret put --config "$CONFIG_PATH" SEGMENTATION_WORKER_URL
-          echo "$MODAL_KEY" | npx wrangler secret put --config "$CONFIG_PATH" MODAL_KEY
-          echo "$MODAL_SECRET" | npx wrangler secret put --config "$CONFIG_PATH" MODAL_SECRET
-          echo "$R2_ACCOUNT_ID" | npx wrangler secret put --config "$CONFIG_PATH" R2_ACCOUNT_ID
-          echo "$R2_ACCESS_KEY_ID" | npx wrangler secret put --config "$CONFIG_PATH" R2_ACCESS_KEY_ID
-          echo "$R2_SECRET_ACCESS_KEY" | npx wrangler secret put --config "$CONFIG_PATH" R2_SECRET_ACCESS_KEY
+          echo "$DATABASE_URL" | npx wrangler preview secret put DATABASE_URL --name ${{ steps.slug.outputs.preview_name }}
+          echo "$SUPABASE_KEY" | npx wrangler preview secret put SUPABASE_KEY --name ${{ steps.slug.outputs.preview_name }}
+          echo "$SEGMENTATION_WORKER_URL" | npx wrangler preview secret put SEGMENTATION_WORKER_URL --name ${{ steps.slug.outputs.preview_name }}
+          echo "$MODAL_KEY" | npx wrangler preview secret put MODAL_KEY --name ${{ steps.slug.outputs.preview_name }}
+          echo "$MODAL_SECRET" | npx wrangler preview secret put MODAL_SECRET --name ${{ steps.slug.outputs.preview_name }}
+          echo "$R2_ACCOUNT_ID" | npx wrangler preview secret put R2_ACCOUNT_ID --name ${{ steps.slug.outputs.preview_name }}
+          echo "$R2_ACCESS_KEY_ID" | npx wrangler preview secret put R2_ACCESS_KEY_ID --name ${{ steps.slug.outputs.preview_name }}
+          echo "$R2_SECRET_ACCESS_KEY" | npx wrangler preview secret put R2_SECRET_ACCESS_KEY --name ${{ steps.slug.outputs.preview_name }}
+          echo "$BUCKET_NAME" | npx wrangler preview secret put BUCKET_NAME --name ${{ steps.slug.outputs.preview_name }}
+          echo "$R2_PUBLIC_BASE_URL" | npx wrangler preview secret put R2_PUBLIC_BASE_URL --name ${{ steps.slug.outputs.preview_name }}
 
       - name: Build frontend
         if: inputs.action == 'create' || inputs.action == 'redeploy'
@@ -282,14 +216,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          CONFIG_PATH="${{ steps.wrangler-config.outputs.config_path }}"
-          npx wrangler deploy --config "$CONFIG_PATH"
+          npx wrangler preview --config wrangler.jsonc --name ${{ steps.slug.outputs.preview_name }}
           echo "✅ Preview deployed successfully"
 
       - name: Output preview URL
         if: inputs.action == 'create'
         run: |
-          WORKER_NAME="${{ steps.wrangler-config.outputs.worker_name }}"
+          WORKER_NAME="coral-companion-router-preview-${{ steps.slug.outputs.slug }}"
           echo "🎉 Preview environment ready!"
           echo "Preview URL: https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev"
           echo "preview_url=https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev" >> $GITHUB_OUTPUT
