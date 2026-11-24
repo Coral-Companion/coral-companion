@@ -174,7 +174,14 @@ jobs:
               --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
               --no-progress
           done < <(find preview-data/r2-seed -type f -print0 | sort -z)
-          
+
+      - name: Build frontend
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
       - name: Deploy preview router to Cloudflare
         if: inputs.action == 'create' || inputs.action == 'redeploy'
         working-directory: api-router
@@ -212,14 +219,6 @@ jobs:
           echo "$BUCKET_NAME" | npx wrangler preview secret put BUCKET_NAME --name ${{ steps.slug.outputs.preview_name }}
           echo "$R2_PUBLIC_BASE_URL" | npx wrangler preview secret put R2_PUBLIC_BASE_URL --name ${{ steps.slug.outputs.preview_name }}
 
-      - name: Build frontend
-        if: inputs.action == 'create' || inputs.action == 'redeploy'
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-          
       - name: Output preview URL
         if: inputs.action == 'create'
         run: |
