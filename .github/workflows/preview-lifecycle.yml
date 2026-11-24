@@ -189,7 +189,9 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx wrangler preview --config wrangler.jsonc --name ${{ steps.slug.outputs.preview_name }}
+          npx wrangler preview --config wrangler.jsonc \
+          --name ${{ steps.slug.outputs.preview_name }} \
+          --var R2_PUBLIC_BASE_URL:https://coral-companion-media-preview-${{ steps.slug.outputs.slug }}.r2.cloudflarestorage.com
           echo "✅ Preview deployed successfully"
 
       - name: Set preview secrets via wrangler
