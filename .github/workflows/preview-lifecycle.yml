@@ -251,14 +251,14 @@ jobs:
 
       - name: Delete preview worker from Cloudflare
         if: inputs.action == 'teardown'
+        working-directory: api-router
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         continue-on-error: true
         run: |
           WORKER_NAME="coral-companion-router-preview-${{ steps.slug.outputs.slug }}"
-          curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/services/${WORKER_NAME}" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
+          npx wrangler preview delete --name $WORKER_NAME
           echo "✅ Preview worker deleted"
 
       - name: Delete Modal environment
