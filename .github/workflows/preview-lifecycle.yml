@@ -153,7 +153,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
-          npx wrangler r2 bucket create "${BUCKET_NAME}" \
+          npx wrangler r2 bucket create "${BUCKET_NAME}"
           echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload R2 seed objects
