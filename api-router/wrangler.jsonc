@@ -66,45 +66,35 @@
 			"R2_SECRET_ACCESS_KEY",
 		]
 	},
-	"previews": {},
-	"env": {
-		"preview": {
-			"containers": [
-				{
-					"class_name": "BackendCore",
-					"image": "../backend/core/Dockerfile",
-					"instance_type": {
-						"vcpu": 1,
-						"memory_mib": 3072,
-						"disk_mb": 4000
-					},
-					"max_instances": 3,
-					"authorized_keys": [
-						{
-							"name": "key ken",
-							"public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHQt2YI1elj+RGIr1NB1ZLQDnZv1n7TLDrXgE5/KzQw ken.iseli@gmail.com"
-						}
-					]
-				}
-			],
-			"durable_objects": {
-				"bindings": [
+	"previews": {
+		"vars": {
+			"R2_PUBLIC_BASE_URL": "@placeholder-to-replace@"
+		},
+		"containers": [
+			{
+				"class_name": "BackendCore",
+				"image": "../backend/core/Dockerfile",
+				"instance_type": {
+					"vcpu": 1,
+					"memory_mib": 3072,
+					"disk_mb": 4000,
+				},
+				"max_instances": 3,
+				"authorized_keys": [
 					{
-						"class_name": "BackendCore",
-						"name": "CORE_CONTAINER"
+						"name": "key ken",
+						"public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPHQt2YI1elj+RGIr1NB1ZLQDnZv1n7TLDrXgE5/KzQw ken.iseli@gmail.com"
 					}
 				]
-			},
-			"exports": {
-				"BackendCore": {
-					"type": "durable-object",
-					"storage": "sqlite"
-				}
-			},
-			"vars": {
-				"SEGMENTATION_PROVIDER": "coralscop",
-				"R2_PUBLIC_BASE_URL": "https://preview-media.coralcompanion.earth"
 			}
-		}
-	}
+		],
+		"durable_objects": {
+			"bindings": [
+				{
+					"class_name": "BackendCore",
+					"name": "CORE_CONTAINER"
+				}
+			]
+		},
+	},
 }
