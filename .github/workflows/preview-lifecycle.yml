@@ -171,8 +171,7 @@ jobs:
             KEY="${file#preview-data/r2-seed/}"
             aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
               --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-              --no-progress \
-              --profile r2
+              --no-progress
           done
 
       - name: Set preview secrets via wrangler
