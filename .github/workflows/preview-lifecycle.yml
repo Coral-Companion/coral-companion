@@ -158,7 +158,7 @@ jobs:
 
       - name: Upload R2 seed objects
         if: inputs.action == 'create'
-        working-directory: api-router
+        working-directory: backend/core
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -166,9 +166,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          for file in $(find backend/core/preview-data/r2-seed -type f | sort); do
+          for file in $(find preview-data/r2-seed -type f | sort); do
             # Preserve directory structure relative to preview-data/r2-seed/
-            KEY="${file#backend/core/preview-data/r2-seed/}"
+            KEY="${file#preview-data/r2-seed/}"
             aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
               --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
               --no-progress \
