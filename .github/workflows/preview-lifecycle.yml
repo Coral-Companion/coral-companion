@@ -166,13 +166,14 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
-          for file in $(find preview-data/r2-seed -type f | sort); do
+          # Use null-delimited find/sort so directory/file names with spaces are safe
+          while IFS= read -r -d '' file; do
             # Preserve directory structure relative to preview-data/r2-seed/
             KEY="${file#preview-data/r2-seed/}"
             aws s3 cp "$file" "s3://${BUCKET_NAME}/${KEY}" \
               --endpoint-url "https://${CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com" \
               --no-progress
-          done
+          done < <(find preview-data/r2-seed -type f -print0 | sort -z)
 
       - name: Set preview secrets via wrangler
         if: inputs.action == 'create' || inputs.action == 'redeploy'
