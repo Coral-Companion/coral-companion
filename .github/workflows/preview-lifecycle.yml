@@ -226,8 +226,8 @@ jobs:
         run: |
           WORKER_NAME="coral-companion-router-preview-${{ steps.slug.outputs.slug }}"
           echo "🎉 Preview environment ready!"
-          echo "Preview URL: https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev"
-          echo "preview_url=https://${WORKER_NAME}.${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.workers.dev" >> $GITHUB_OUTPUT
+          echo "Preview URL: https://${WORKER_NAME}.{$R2_ACCOUNT_ID}.workers.dev"
+          echo "preview_url=https://${WORKER_NAME}.{$R2_ACCOUNT_ID}.workers.dev" >> $GITHUB_OUTPUT
 
       # ---- Teardown ----
       - name: Empty and delete R2 preview bucket
