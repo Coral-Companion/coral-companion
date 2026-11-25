@@ -236,18 +236,27 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          set -euo pipefail
           BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
-          OBJECTS=$(curl -s "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}/objects?limit=1000" \
-            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" | grep -oE '"key":"[^"]+"' | cut -d'"' -f4)
-          if [ -n "$OBJECTS" ]; then
-            for KEY in $OBJECTS; do
-              curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}/objects/${KEY}" \
+          OBJECTS_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}/objects"
+
+          # Keys are URL-encoded so spaces etc. are safe in the DELETE path.
+          KEYS=$(curl -s "$OBJECTS_URL?limit=1000" \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            | jq -r '.result[].key // empty')
+
+          if [ -n "$KEYS" ]; then
+            while IFS= read -r KEY; do
+              ENCODED_KEY=$(python -c 'import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=""))' "$KEY")
+              curl -s -X DELETE "$OBJECTS_URL/$ENCODED_KEY" \
                 -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" > /dev/null
-            done
+            done <<< "$KEYS"
           fi
+
           curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
           echo "✅ R2 bucket deleted"
+
 
       - name: Delete preview worker from Cloudflare
         if: inputs.action == 'teardown'
