@@ -243,7 +243,7 @@ jobs:
           # Keys are URL-encoded so spaces etc. are safe in the DELETE path.
           KEYS=$(curl -s "$OBJECTS_URL?limit=1000" \
             -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
-            | jq -r '.result[].key // empty')
+            | jq -r '(.result // [])[].key // empty')
 
           if [ -n "$KEYS" ]; then
             while IFS= read -r KEY; do
