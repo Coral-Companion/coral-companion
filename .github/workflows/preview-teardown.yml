@@ -2,17 +2,14 @@ name: "🌅 Sunset Preview Environment"
 description: Deletes an isolated preview environment (on branch deletion or manual gate)
 
 on:
-  delete:
-    branches:
-      - '**'
   workflow_dispatch:
     inputs:
       branch:
-        description: "Git branch whose preview should be torn down"
+        description: "Git branch to use for checkout"
         type: string
         required: true
       slug:
-        description: "URL-safe preview slug (optional, auto-derived from branch)"
+        description: "Preview slug (without 'preview' prefix)"
         type: string
         required: false
 

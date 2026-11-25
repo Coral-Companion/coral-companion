@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Git branch to preview (e.g. feature/COCO-42-automated-coral-measurement)"
+        description: "Git branch to preview (e.g. feature/COCO-42-universal-answer)"
         type: string
         required: true
       slug:
-        description: "URL-safe preview slug (optional, auto-derived from branch)"
+        description: "Preview slug (without 'preview' prefix)"
         type: string
         required: false
 

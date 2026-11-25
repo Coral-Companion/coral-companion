@@ -13,7 +13,7 @@ on:
         type: string
         required: true
       slug:
-        description: "URL-safe preview slug (defaults to branch-based slug)"
+        description: "Preview slug (without 'preview' prefix)"
         type: string
         required: false
 
