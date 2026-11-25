@@ -68,7 +68,9 @@
 	},
 	"previews": {
 		"vars": {
-			"R2_PUBLIC_BASE_URL": "@placeholder-to-replace@"
+			"R2_PUBLIC_BASE_URL": "@placeholder-to-replace@",
+			"SEGMENTATION_PROVIDER": "coralscop"
+
 		},
 		"containers": [
 			{
