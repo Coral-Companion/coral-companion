@@ -5,13 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Git branch to use for checkout"
+        description: "Git branch to sunset preview for"
         type: string
         required: true
-      slug:
-        description: "Preview slug (without 'preview' prefix)"
-        type: string
-        required: false
 
 jobs:
   teardown:
@@ -19,7 +15,6 @@ jobs:
     with:
       action: teardown
       branch: ${{ github.event.inputs.branch || github.event.ref }}
-      slug: ${{ github.event.inputs.slug }}
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

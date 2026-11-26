@@ -1,5 +1,5 @@
 name: Preview lifecycle
-description: Reusable workflow to create, redeploy, or teardown a preview environment
+description: Reusable workflow to create, redeploy, or sunset a preview environment
 
 on:
   workflow_call:
@@ -12,10 +12,6 @@ on:
         description: "Git branch to preview"
         type: string
         required: true
-      slug:
-        description: "Preview slug (without 'preview' prefix)"
-        type: string
-        required: false
 
     secrets:
       CLOUDFLARE_API_TOKEN:
@@ -55,25 +51,22 @@ jobs:
           BRANCH="${{ inputs.branch }}"
           # Strip refs/heads/ prefix (comes from the `delete` event)
           BRANCH="${BRANCH#refs/heads/}"
-          SLUG="${{ inputs.slug }}"
-          if [ -z "$SLUG" ]; then
-            # Derive a short, URL-safe slug from the branch name:
-            #   - lowercase
-            #   - drop a leading feature/ or bugfix/ prefix
-            #   - drop a leading coco-<digits> issue prefix (any number of digits)
-            #   - replace non-alphanumerics with dashes, collapse, trim
-            #   - cap at 60 chars, cutting at the last full word
-            SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
-            # strip leading feature/ or bugfix/ prefix
-            SLUG="${SLUG#feature/}"
-            SLUG="${SLUG#bugfix/}"
-            # drop coco-<digits> issue prefix (any number of digits)
-            SLUG=$(echo "$SLUG" | sed -E 's/coco-[0-9]+//g')
-            # replace non-alphanumerics with dashes, collapse, trim
-            SLUG=$(echo "$SLUG" | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
-            if [ "${#SLUG}" -gt 60 ]; then
-              SLUG=$(echo "$SLUG" | cut -c1-60 | sed 's/-[^-]*$//;s/-$//')
-            fi
+          # Derive a short, URL-safe slug from the branch name:
+          #   - lowercase
+          #   - drop a leading feature/ or bugfix/ prefix
+          #   - drop a leading coco-<digits> issue prefix (any number of digits)
+          #   - replace non-alphanumerics with dashes, collapse, trim
+          #   - cap at 60 chars, cutting at the last full word
+          SLUG=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]')
+          # strip leading feature/ or bugfix/ prefix
+          SLUG="${SLUG#feature/}"
+          SLUG="${SLUG#bugfix/}"
+          # drop coco-<digits> issue prefix (any number of digits)
+          SLUG=$(echo "$SLUG" | sed -E 's/coco-[0-9]+//g')
+          # replace non-alphanumerics with dashes, collapse, trim
+          SLUG=$(echo "$SLUG" | sed 's/[^a-z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
+          if [ "${#SLUG}" -gt 60 ]; then
+            SLUG=$(echo "$SLUG" | cut -c1-60 | sed 's/-[^-]*$//;s/-$//')
           fi
           PREVIEW_NAME="preview-${SLUG}"
           echo "preview_name=$PREVIEW_NAME" >> $GITHUB_OUTPUT

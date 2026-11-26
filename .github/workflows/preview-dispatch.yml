@@ -8,10 +8,6 @@ on:
         description: "Git branch to preview (e.g. feature/COCO-42-universal-answer)"
         type: string
         required: true
-      slug:
-        description: "Preview slug (without 'preview' prefix)"
-        type: string
-        required: false
 
 jobs:
   create:
@@ -19,7 +15,6 @@ jobs:
     with:
       action: create
       branch: ${{ github.event.inputs.branch }}
-      slug: ${{ github.event.inputs.slug }}
     secrets:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
