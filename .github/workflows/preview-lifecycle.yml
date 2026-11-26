@@ -215,7 +215,7 @@ jobs:
         run: |
           npx wrangler preview --config wrangler.jsonc \
           --name ${{ steps.slug.outputs.preview_name }} \
-          --var R2_PUBLIC_BASE_URL:https://${{ steps.r2-bucket-name.outputs.bucket_name }}.r2.cloudflarestorage.com
+          --var R2_PUBLIC_BASE_URL:https://${{ steps.r2-bucket-name.outputs.bucket_name }}.coralcompanion.earth
           echo "✅ Preview deployed successfully"
 
       - name: Set preview secrets via wrangler
@@ -232,7 +232,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           BUCKET_NAME: ${{ steps.r2-bucket-name.outputs.bucket_name }}
-          R2_PUBLIC_BASE_URL: https://${{ steps.r2-bucket-name.outputs.bucket_name }}.r2.cloudflarestorage.com
+          R2_PUBLIC_BASE_URL: https://${{ steps.r2-bucket-name.outputs.bucket_name }}.coralcompanion.earth
         run: |
           echo "$DATABASE_URL" | npx wrangler preview secret put DATABASE_URL --name ${{ steps.slug.outputs.preview_name }}
           echo "$SUPABASE_KEY" | npx wrangler preview secret put SUPABASE_KEY --name ${{ steps.slug.outputs.preview_name }}
