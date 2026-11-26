@@ -160,6 +160,10 @@ jobs:
           BUCKET_NAME: ${{ steps.r2-bucket-name.outputs.bucket_name }}
         run: |
           npx wrangler r2 bucket create "${BUCKET_NAME}"
+          npx wrangler r2 bucket domain add ${BUCKET_NAME} \
+            --domain ${BUCKET_NAME}.coralcompanion.earth \
+            --zone-id b34670ee78cc1b2ec61e495900378606 \
+            -y
 
       - name: Upload R2 seed objects
         if: inputs.action == 'create'
