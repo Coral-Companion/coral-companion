@@ -144,17 +144,22 @@ jobs:
           fi
           echo "segmentation_worker_url=$SEGMENTATION_WORKER_URL" >> $GITHUB_OUTPUT
 
-      # ---- R2 bucket ----
+          # ---- R2 bucket ----
+      - name: Determine R2 preview bucket name
+        id: r2-bucket-name
+        run: |
+          BUCKET_NAME="media-preview-${{ steps.slug.outputs.slug }}"
+          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
+
       - name: Create R2 preview bucket
         if: inputs.action == 'create'
         id: r2-bucket
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BUCKET_NAME: ${{ steps.r2-bucket-name.outputs.bucket_name }}
         run: |
-          BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
           npx wrangler r2 bucket create "${BUCKET_NAME}"
-          echo "bucket_name=$BUCKET_NAME" >> $GITHUB_OUTPUT
 
       - name: Upload R2 seed objects
         if: inputs.action == 'create'
@@ -162,7 +167,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          BUCKET_NAME: ${{ steps.r2-bucket.outputs.bucket_name }}
+          BUCKET_NAME: ${{ steps.r2-bucket-name.outputs.bucket_name }}
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: |
@@ -191,7 +196,7 @@ jobs:
         run: |
           npx wrangler preview --config wrangler.jsonc \
           --name ${{ steps.slug.outputs.preview_name }} \
-          --var R2_PUBLIC_BASE_URL:https://coral-companion-media-preview-${{ steps.slug.outputs.slug }}.r2.cloudflarestorage.com
+          --var R2_PUBLIC_BASE_URL:https://${{ steps.r2-bucket-name.outputs.bucket_name }}.r2.cloudflarestorage.com
           echo "✅ Preview deployed successfully"
 
       - name: Set preview secrets via wrangler
@@ -207,8 +212,8 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          BUCKET_NAME: coral-companion-media-preview-${{ steps.slug.outputs.slug }}
-          R2_PUBLIC_BASE_URL: https://coral-companion-media-preview-${{ steps.slug.outputs.slug }}.r2.cloudflarestorage.com
+          BUCKET_NAME: ${{ steps.r2-bucket-name.outputs.bucket_name }}
+          R2_PUBLIC_BASE_URL: https://${{ steps.r2-bucket-name.outputs.bucket_name }}.r2.cloudflarestorage.com
         run: |
           echo "$DATABASE_URL" | npx wrangler preview secret put DATABASE_URL --name ${{ steps.slug.outputs.preview_name }}
           echo "$SUPABASE_KEY" | npx wrangler preview secret put SUPABASE_KEY --name ${{ steps.slug.outputs.preview_name }}
@@ -237,7 +242,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          BUCKET_NAME="coral-companion-media-preview-${{ steps.slug.outputs.slug }}"
+          BUCKET_NAME=${{ steps.r2-bucket-name.outputs.bucket_name }}
           OBJECTS_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/${BUCKET_NAME}/objects"
 
           # Keys are URL-encoded so spaces etc. are safe in the DELETE path.
