@@ -1,18 +1,20 @@
 <template>
   <div ref="container" class="relative">
-    <div class="flex flex-col grid grid-cols-1 sm:grid-cols-[1fr_40px]">
+    <div class="flex flex-col grid grid-cols-1 sm:grid-cols-[1fr_40px]
+          hover:opacity-90"
+          :class="{ ' opacity-40' : !open, ' opacity-90' : open }"
+          >
       <button type="button" :disabled="loading || !image" 
           class="px-3 py-2 text-xs text-coral-primary-text
           rounded border border-coral-button-border 
           border-r-0 rounded-r-none
-          bg-coral-overlay hover:bg-coral-button-hover
-          opacity-65 disabled:opacity-40" @click="runSegmentation">
+          bg-coral-overlay hover:bg-coral-button-hover"
+          @click="runSegmentation">
           {{ loading ? "Segmenting..." : "Advanced segmentation" }}
       </button>
       <button type="button" :disabled="loading || !image" @click="toggleDropdown" class="px-3 py-2 text-xs font-medium text-coral-primary-text
           rounded border border-coral-button-border rounded-l-none
-          bg-coral-overlay hover:bg-coral-button-hover
-          opacity-65 disabled:opacity-40">
+          bg-coral-overlay hover:bg-coral-button-hover">
         <span class="text-coral-secondary-text transition-transform" :class="open ? 'rotate-180' : ''">▼</span>
       </button>
     </div>
