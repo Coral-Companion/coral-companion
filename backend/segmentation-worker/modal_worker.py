@@ -1,5 +1,7 @@
 from pathlib import Path
 import modal
+import logging
+import sys
 
 ROOT = Path(__file__).resolve().parent
 APP_DIR = ROOT / "app"
@@ -39,10 +41,15 @@ image = (
     timeout=600,
     startup_timeout=900,
     scaledown_window=60,
+    
 )
-
 @modal.asgi_app(requires_proxy_auth=True)
 def serve():
     from app.api.main import app as fastapi_app
-
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        stream=sys.stdout,
+        force=True,
+    )
     return fastapi_app
