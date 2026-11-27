@@ -25,7 +25,12 @@ class CoralScopProvider(SegmentationProvider):
         self.logger = logging.getLogger("uvicorn.error")
     
     async def segment(
-        self, image: bytes, image_filename: str, layers: int = 0
+        self,
+        image: bytes,
+        image_filename: str,
+        layers: int = 0,
+        points_per_side: int = 10,
+        points_per_batch: int = 32,
     ) -> SegmentationResult:
         """
         Sends raw image bytes as multipart/form-data to the segmentation worker
@@ -33,7 +38,11 @@ class CoralScopProvider(SegmentationProvider):
         """
         url = f"{self.base_url}/api/segment"
         files = {"file": (image_filename, image, "image/jpeg")}
-        data = {"layers": str(layers)}
+        data = {
+            "layers": str(layers),
+            "points_per_side": str(points_per_side),
+            "points_per_batch": str(points_per_batch),
+        }
         timeout = httpx.Timeout(480.0, connect=10.0)
         headers = {
             "Modal-Key": MODAL_KEY,

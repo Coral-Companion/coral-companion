@@ -48,7 +48,12 @@ class FixtureProvider(SegmentationProvider):
         return json_path
 
     async def segment(
-        self, image: bytes, image_filename: str, layers: int = 0
+        self,
+        image: bytes,
+        image_filename: str,
+        layers: int = 0,
+        points_per_side: int = 10,
+        points_per_batch: int = 32,
     ) -> SegmentationResult:
         json_file = self._get_fixture_json_path(image_filename)
 
