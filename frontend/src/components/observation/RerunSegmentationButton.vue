@@ -2,34 +2,36 @@
   <div ref="container" class="relative">
     <div class="flex flex-col grid grid-cols-1 sm:grid-cols-[1fr_40px]">
       <button type="button" :disabled="loading || !image" 
-          class="px-3 py-2 text-xs font-medium text-coral-primary-text
+          class="px-3 py-2 text-xs text-coral-primary-text
           rounded border border-coral-button-border 
-          rounded-b-none sm:rounded sm:border-r-0 sm:rounded-r-none
-          hover:bg-coral-button-hover disabled:opacity-40" @click="runSegmentation">
-          {{ loading ? "Segmenting..." : "Find more segments" }}
+          border-r-0 rounded-r-none
+          bg-coral-overlay hover:bg-coral-button-hover
+          opacity-65 disabled:opacity-40" @click="runSegmentation">
+          {{ loading ? "Segmenting..." : "Advanced segmentation" }}
       </button>
       <button type="button" :disabled="loading || !image" @click="toggleDropdown" class="px-3 py-2 text-xs font-medium text-coral-primary-text
-          rounded border border-coral-button-border
-          border-t-0 rounded-t-none sm:border-t sm:rounded-r sm:border-l-0 sm:rounded-l-none
-          hover:bg-coral-button-hover disabled:opacity-40">
+          rounded border border-coral-button-border rounded-l-none
+          bg-coral-overlay hover:bg-coral-button-hover
+          opacity-65 disabled:opacity-40">
         <span class="text-coral-secondary-text transition-transform" :class="open ? 'rotate-180' : ''">▼</span>
       </button>
     </div>
 
     <aside v-if="open"
-        class="absolute z-40 w-full overflow-hidden rounded border border-t-0 rounded-t-none border-coral-surface-border
-        bg-coral-surface shadow-xl p-3">
-      <label class="block mb-1 text-xs text-coral-secondary-text">Layers: {{ layers }}</label>
+        class="absolute z-40 w-full bottom-full overflow-hidden
+        rounded border border-b-0 rounded-b-none border-coral-surface-border
+        bg-coral-overlay shadow-xl p-3 opacity-90">
+      <label class="block mb-1 text-xs text-coral-primary-text">Layers: {{ layers }}</label>
       <input type="range" v-model.number="layers" min="0" max="5" :disabled="loading" class="w-full mb-3 rounded border border-coral-raised-border bg-coral-input
-        p-2 text-coral-primary-text" />
+        p-2 text-coral-primary-text accent-coral-primary" />
 
-      <label class="block mb-1 text-xs text-coral-secondary-text">Points per Side: {{ pointsPerSide }}</label>
+      <label class="block mb-1 text-xs text-coral-primary-text">Points per Side: {{ pointsPerSide }}</label>
       <input type="range" v-model.number="pointsPerSide" min="10" max="100" step="10" :disabled="loading" class="w-full mb-3 rounded border border-coral-raised-border bg-coral-input
-        p-2 text-coral-primary-text" />
+        p-2 text-coral-primary-text accent-coral-primary" />
 
-      <label class="block mb-1 text-xs text-coral-secondary-text">Points per Batch: {{ pointsPerBatch }}</label>
+      <label class="block mb-1 text-xs text-coral-primary-text">Points per Batch: {{ pointsPerBatch }}</label>
       <input type="range" v-model.number="pointsPerBatch" min="32" max="512" step="32" :disabled="loading" class="w-full rounded border border-coral-raised-border bg-coral-input
-        p-2 text-coral-primary-text" />
+        p-2 text-coral-primary-text accent-coral-primary" />
     </aside>
   </div>
 </template>

@@ -7,7 +7,7 @@
       <!-- Image / segmentation panel -->
       <section class="flex flex-col overflow-hidden rounded border border-coral-surface-border bg-coral-surface">
         <div
-          class="grid grid-cols-5 items-center gap-4 border-b border-coral-surface-border px-4 py-3 text-xs">
+          class="grid grid-cols-4 items-center gap-4 border-b border-coral-surface-border px-4 py-3 text-xs">
 
           <div class="flex flex-col">
             <button class="px-3 py-2 rounded border border-coral-button-border hover:bg-coral-button-hover"
@@ -48,19 +48,22 @@
                   : "Find coral colony for selection"
               }}
             </button>
-
-            <RerunSegmentationButton
-              :image="image"
-              @done="onRerunDone"
-              @loading="v => loading.segment = v"
-            />
-
         </div>
 
         <div class="relative flex min-h-0 flex-1 items-center justify-center bg-coral-surface p-3" @dragover.prevent
           @drop.prevent="dropped">
           <CoralImageViewer v-if="imageUrl" :image-src="imageUrl" :segments="segments" :selected="selected"
             :opacity="opacity" @toggle="toggle" />
+
+          <aside v-if="imageUrl"
+            class="absolute bottom-0 right-0"
+          >
+            <RerunSegmentationButton
+                :image="image"
+                @done="onRerunDone"
+                @loading="v => loading.segment = v"
+              />
+          </aside>
 
           <div v-else class="text-center">
             <p class="text-base">
