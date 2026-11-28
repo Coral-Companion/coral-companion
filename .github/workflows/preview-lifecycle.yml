@@ -88,8 +88,8 @@ jobs:
         working-directory: api-router
         run: npm ci
 
-      - name: Install backend deps (for alembic)
-        run: pip install -r backend/core/requirements.txt
+      - name: Install Alembic
+        run: pip install alembic==1.18.4
 
       - name: Install AWS CLI
         run: |
