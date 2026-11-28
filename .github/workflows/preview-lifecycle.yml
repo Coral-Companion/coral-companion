@@ -89,7 +89,7 @@ jobs:
         run: npm ci
 
       - name: Install Alembic
-        run: pip install alembic==1.18.4
+        run: pip install "alembic==1.18.4" "sqlmodel==0.0.39" "sqlalchemy==2.0.51" "psycopg[binary]>=3.2.10"
 
       - name: Install AWS CLI
         run: |
@@ -105,74 +105,14 @@ jobs:
           modal environment create "${{ steps.slug.outputs.preview_name }}" || true
 
       - name: Create Neon preview branch
-        id: neon-create-branch
-        if: inputs.action == 'create'
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-        run: |
-          BRANCH_NAME="${{ steps.slug.outputs.preview_name }}"
-          # Find the prod branch (named "production") to branch from
-          MAIN_ID=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Accept: application/json" | python -c "import sys,json; branches=json.load(sys.stdin)['branches']; b=next((b for b in branches if b['name']=='production'), None); print(b['id'] if b else [b for b in branches if not b.get('parent_id')][0]['id'])")
-          CREATE=$(curl -s -X POST "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Accept: application/json" \
-            -H "Content-Type: application/json" \
-            -d "{\"name\": \"$BRANCH_NAME\", \"parent_id\": \"$MAIN_ID\", \"init_source\": \"parent-data\"}")
-          BRANCH_ID=$(echo "$CREATE" | python -c "import sys,json; print(json.load(sys.stdin)['branch']['id'])")
-          # Poll until the connection URI is available
-          DATABASE_URL=""
-          for i in $(seq 1 60); do
-            RESP=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID" \
-              -H "Authorization: Bearer $NEON_API_KEY" \
-              -H "Accept: application/json")
-            DATABASE_URL=$(echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('uri',''))")
-            if [ -n "$DATABASE_URL" ]; then break; fi
-            sleep 5
-          done
-          if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Could not get connection URI from Neon after polling. Last response:"
-            echo "$RESP"
-            exit 1
-          fi
-          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
-
-      - name: Get Neon preview branch DATABASE_URL
-        id: neon-get-db-url
-        if: inputs.action == 'redeploy'
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-        run: |
-          BRANCH_NAME="${{ steps.slug.outputs.preview_name }}"
-          BRANCHES_JSON=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Accept: application/json")
-          BRANCH_ID=$(echo "$BRANCHES_JSON" | python -c "import sys,json; branches=json.load(sys.stdin)['branches']; b=next((b for b in branches if b['name']=='$BRANCH_NAME'), None); print(b['id'] if b else '')")
-          if [ -z "$BRANCH_ID" ]; then
-            echo "❌ Could not find Neon branch '$BRANCH_NAME'"
-            exit 1
-          fi
-          # Poll until the connection URI is available
-          DATABASE_URL=""
-          RESP=""
-          for i in $(seq 1 60); do
-            RESP=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID" \
-              -H "Authorization: Bearer $NEON_API_KEY" \
-              -H "Accept: application/json")
-            DATABASE_URL=$(echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('uri',''))")
-            if [ -n "$DATABASE_URL" ]; then break; fi
-            sleep 5
-          done
-          if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Could not get connection URI from Neon after polling. Last response:"
-            echo "$RESP"
-            exit 1
-          fi
-          echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
-
+        id: neon-branch
+        if: inputs.action == 'create' || inputs.action == 'redeploy'
+        uses: neondatabase/create-branch-action@v6
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+          branch_name: ${{ steps.slug.outputs.preview_name }}
+          parent_branch: production
       - name: Download CoralSCOP checkpoint from R2
         if: inputs.action == 'create' || inputs.action == 'redeploy'
         working-directory: backend/segmentation-worker
@@ -292,7 +232,7 @@ jobs:
         working-directory: api-router
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          DATABASE_URL: ${{ steps.neon-create-branch.outputs.database_url || steps.neon-get-db-url.outputs.database_url }}
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SEGMENTATION_WORKER_URL: ${{ steps.modal-url.outputs.segmentation_worker_url }}
           MODAL_KEY: ${{ secrets.MODAL_KEY }}
@@ -318,7 +258,7 @@ jobs:
         if: inputs.action == 'redeploy'
         working-directory: backend/core
         env:
-          DATABASE_URL: ${{ steps.neon-create-branch.outputs.database_url || steps.neon-get-db-url.outputs.database_url }}
+          DATABASE_URL: ${{ steps.neon-branch.outputs.db_url }}
         run: alembic upgrade head
 
       - name: Output preview URL
@@ -382,21 +322,9 @@ jobs:
 
       - name: Delete Neon preview branch
         if: inputs.action == 'teardown'
-        env:
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
         continue-on-error: true
-        run: |
-          BRANCH_NAME="${{ steps.slug.outputs.preview_name }}"
-          BRANCHES_JSON=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Accept: application/json")
-          BRANCH_ID=$(echo "$BRANCHES_JSON" | python -c "import sys,json; branches=json.load(sys.stdin)['branches']; b=next((b for b in branches if b['name']=='$BRANCH_NAME'), None); print(b['id'] if b else '')")
-          if [ -n "$BRANCH_ID" ]; then
-            curl -s -X DELETE "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID" \
-              -H "Authorization: Bearer $NEON_API_KEY" \
-              -H "Accept: application/json"
-            echo "✅ Neon branch deleted"
-          else
-            echo "Neon branch '$BRANCH_NAME' not found, skipping"
-          fi
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch: ${{ steps.slug.outputs.preview_name }}
+          api_key: ${{ secrets.NEON_API_KEY }}
