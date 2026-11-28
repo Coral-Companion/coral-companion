@@ -14,8 +14,6 @@ sqlmodel==0.0.39
 sqlalchemy==2.0.51
 psycopg[binary]>=3.2.10
 pgvector==0.4.1
-
-# Attention: if this is changed, also perform the change in github action
 alembic==1.18.4
 
 python-dotenv==1.0.1
