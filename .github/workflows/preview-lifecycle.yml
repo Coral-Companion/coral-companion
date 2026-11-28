@@ -122,19 +122,19 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"name\": \"$BRANCH_NAME\", \"parent_id\": \"$MAIN_ID\", \"init_source\": \"parent-data\"}")
           BRANCH_ID=$(echo "$CREATE" | python -c "import sys,json; print(json.load(sys.stdin)['branch']['id'])")
-          # Poll until the branch is ready
+          # Poll until the connection URI is available
+          DATABASE_URL=""
           for i in $(seq 1 60); do
-            STATE=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/branches/$BRANCH_ID" \
+            RESP=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID" \
               -H "Authorization: Bearer $NEON_API_KEY" \
-              -H "Accept: application/json" | python -c "import sys,json; print(json.load(sys.stdin)['branch']['current_state'])")
-            if [ "$STATE" = "ready" ]; then break; fi
+              -H "Accept: application/json")
+            DATABASE_URL=$(echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('uri',''))")
+            if [ -n "$DATABASE_URL" ]; then break; fi
             sleep 5
           done
-          DATABASE_URL=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Accept: application/json" | python -c "import sys,json; print(json.load(sys.stdin)['uri'])")
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Could not extract connection URI from Neon"
+            echo "❌ Could not get connection URI from Neon after polling. Last response:"
+            echo "$RESP"
             exit 1
           fi
           echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
@@ -155,11 +155,20 @@ jobs:
             echo "❌ Could not find Neon branch '$BRANCH_NAME'"
             exit 1
           fi
-          DATABASE_URL=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID" \
-            -H "Authorization: Bearer $NEON_API_KEY" \
-            -H "Accept: application/json" | python -c "import sys,json; print(json.load(sys.stdin)['uri'])")
+          # Poll until the connection URI is available
+          DATABASE_URL=""
+          RESP=""
+          for i in $(seq 1 60); do
+            RESP=$(curl -s "https://console.neon.tech/api/v2/projects/$NEON_PROJECT_ID/connection_uri?branch_id=$BRANCH_ID" \
+              -H "Authorization: Bearer $NEON_API_KEY" \
+              -H "Accept: application/json")
+            DATABASE_URL=$(echo "$RESP" | python -c "import sys,json; d=json.load(sys.stdin); print(d.get('uri',''))")
+            if [ -n "$DATABASE_URL" ]; then break; fi
+            sleep 5
+          done
           if [ -z "$DATABASE_URL" ]; then
-            echo "❌ Could not extract connection URI from Neon"
+            echo "❌ Could not get connection URI from Neon after polling. Last response:"
+            echo "$RESP"
             exit 1
           fi
           echo "database_url=$DATABASE_URL" >> $GITHUB_OUTPUT
