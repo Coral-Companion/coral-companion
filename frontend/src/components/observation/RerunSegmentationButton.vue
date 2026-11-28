@@ -51,7 +51,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   done: [segments: Segment[], candidates: CoralCandidate[]];
-  loading: [isLoading: boolean];
 }>();
 
 const container = ref<HTMLElement | null>(null);
@@ -59,7 +58,7 @@ const layers = ref(0);
 const pointsPerSide = ref(10);
 const pointsPerBatch = ref(32);
 const open = ref(false);
-const loading = ref(false);
+const loading = defineModel<boolean>("loading");
 const notificationStore = useNotificationStore();
 
 const toggleDropdown = () => {
@@ -70,7 +69,6 @@ const runSegmentation = async () => {
   if (!props.image || loading.value) return;
 
   loading.value = true;
-  emit("loading", true);
   notificationStore.info("Re-running Segmentation...");
   window.umami.track("observation-repeat-segmentation", {
     "layers": layers.value,
@@ -92,7 +90,6 @@ const runSegmentation = async () => {
     window.umami.captureException(e);
   } finally {
     loading.value = false;
-    emit("loading", false);
     open.value = false;
   }
 };

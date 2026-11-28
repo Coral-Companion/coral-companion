@@ -61,7 +61,7 @@
             <RerunSegmentationButton
                 :image="image"
                 @done="onRerunDone"
-                @loading="v => loading.segment = v"
+                v-model:loading="loading.segment"
               />
           </aside>
 
