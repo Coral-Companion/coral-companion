@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build-for-preview-environment": "vite build --mode preview",
     "preview": "vite preview",
     "type-check": "vue-tsc --noEmit"
   },

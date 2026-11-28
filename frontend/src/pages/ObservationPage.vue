@@ -7,7 +7,7 @@
       <!-- Image / segmentation panel -->
       <section class="flex flex-col overflow-hidden rounded border border-coral-surface-border bg-coral-surface">
         <div
-          class="grid grid-cols-5 items-center gap-4 border-b border-coral-surface-border px-4 py-3 text-xs">
+          class="grid grid-cols-4 items-center gap-4 border-b border-coral-surface-border px-4 py-3 text-xs">
 
           <div class="flex flex-col">
             <button class="px-3 py-2 rounded border border-coral-button-border hover:bg-coral-button-hover"
@@ -48,23 +48,22 @@
                   : "Find coral colony for selection"
               }}
             </button>
-
-            <button :disabled="loading.segment || layers >= 5"
-              class="px-3 py-2 rounded border border-coral-button-border hover:bg-coral-button-hover disabled:opacity-40"
-              @click="rerunSegmentation">
-              {{
-                loading.segment
-                  ? "Finding..."
-                  : "Find more"
-              }}
-            </button>
-
         </div>
 
         <div class="relative flex min-h-0 flex-1 items-center justify-center bg-coral-surface p-3" @dragover.prevent
           @drop.prevent="dropped">
           <CoralImageViewer v-if="imageUrl" :image-src="imageUrl" :segments="segments" :selected="selected"
             :opacity="opacity" @toggle="toggle" />
+
+          <aside v-if="imageUrl"
+            class="absolute bottom-0 right-0"
+          >
+            <RerunSegmentationButton
+                :image="image"
+                @done="onRerunDone"
+                v-model:loading="loading.segment"
+              />
+          </aside>
 
           <div v-else class="text-center">
             <p class="text-base">
@@ -125,6 +124,7 @@ import { useCoralDataStore } from "../stores/coral";
 import CoralImageViewer from "../components/observation/CoralImageViewer.vue";
 import CandidatesPanel from "../components/observation/CandidatesPanel.vue";
 import SurveySelector from "../components/observation/SurveySelector.vue";
+import RerunSegmentationButton from "../components/observation/RerunSegmentationButton.vue";
 
 import segmentation from "../services/segmentationService";
 import observationService from "../services/observationService";
@@ -148,7 +148,6 @@ const opacity = ref(0.55);
 const error = ref("");
 const info = ref("");
 const success = ref("");
-const layers = ref(0);
 
 const loading = reactive({
   segment: false,
@@ -189,14 +188,12 @@ const upload = async (
   segments.value = [];
   selected.value = new Set();
   candidates.value = [];
-  layers.value = 0;
-
   loading.segment = true;
 
   notificationStore.info("Calculating Segments...");
 
   try {
-    const uploadResult = await segmentation.segmentImage(file, layers.value);
+    const uploadResult = await segmentation.segmentImage(file);
 
     segments.value = uploadResult.segments;
 
@@ -211,32 +208,12 @@ const upload = async (
   }
 };
 
-const rerunSegmentation = async () => {
-  if (!image.value) {
-    return;
-  }
-
-  const newLayers = Math.min(layers.value + 1, 5);
-  layers.value = newLayers;
-
-  loading.segment = true;
-
-  notificationStore.info("Re-running Segmentation...");
-
-  try {
-    const uploadResult = await segmentation.segmentImage(image.value, layers.value);
-
-    segments.value = uploadResult.segments;
-
-    updateCandidates(uploadResult.observationCandidates);
-
-    notificationStore.success("Segments Recalculated");
-  } catch (e) {
-    notificationStore.error(e instanceof Error ? e.message : "Segmentation failed.");
-    window.umami.captureException(e);
-  } finally {
-    loading.segment = false;
-  }
+const onRerunDone = (
+  segmentsResult: Segment[],
+  candidates: CoralCandidate[],
+) => {
+  segments.value = segmentsResult;
+  updateCandidates(candidates);
 };
 
 const picked = (e: Event) => {

@@ -66,9 +66,18 @@ async def generic_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content={"error": "Internal server error."})
 
 @app.post("/api/upload-coral-image", response_model=ImageUploadResponse)
-async def upload_coral_image(image: UploadFile = File(...), layers: int = Form(0)):
+async def upload_coral_image(
+    image: UploadFile = File(...),
+    layers: int = Form(0),
+    points_per_side: int = Form(10),
+    points_per_batch: int = Form(32),
+):
     if layers is None or layers < 0 or layers > 5:
         layers = 0
+    if points_per_side < 0 or points_per_side > 100:
+        points_per_side = 10
+    if points_per_batch < 0 or points_per_batch > 1_000:
+        points_per_batch = 32
 
     image_bytes = await image.read()
     img_array: np.ndarray = decode_image_bytes(image_bytes)
@@ -76,6 +85,8 @@ async def upload_coral_image(image: UploadFile = File(...), layers: int = Form(0
         image=image_bytes,
         filename=image.filename or "uploaded.jpg",
         layers=layers,
+        points_per_side=points_per_side,
+        points_per_batch=points_per_batch,
     )
     
     candidates = []
